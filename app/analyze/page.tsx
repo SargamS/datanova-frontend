@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Upload, BarChart3, AlertCircle, Loader } from "lucide-react";
+import { ArrowLeft, Upload, BarChart3, Loader } from "lucide-react";
 
 export default function AnalyzePage() {
   const [dragActive, setDragActive] = useState(false);
@@ -12,7 +12,6 @@ export default function AnalyzePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ---------- Drag handlers ----------
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -41,8 +40,8 @@ export default function AnalyzePage() {
     }
   };
 
-  // ---------- REAL backend upload ----------
-  const handleFileUpload = async (file: globalThis.File) => {
+  // ✅ FINAL working upload function
+  const handleFileUpload = async (file: File) => {
     setIsLoading(true);
     setError(null);
 
@@ -59,20 +58,24 @@ export default function AnalyzePage() {
       );
 
       if (!response.ok) {
-        throw new Error("Backend error");
+        const text = await response.text();
+        console.error("Backend error:", text);
+        throw new Error(text);
       }
 
       const data = await response.json();
+      console.log("Backend response:", data);
 
       setDataset({
-        fileId: data.file_id,
         fileName: file.name,
         uploadedAt: new Date(),
-        stats: data.stats,
+        summary: data.summary,
+        columns: data.columns,
       });
+
     } catch (err) {
-      console.error(err);
-      setError("Failed to upload file. Please try again.");
+      console.error("Upload failed:", err);
+      setError("Upload failed. Check backend or file format.");
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +87,7 @@ export default function AnalyzePage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-purple-50">
-      {/* Navigation */}
+
       <nav className="sticky top-0 bg-white/85 backdrop-blur-sm border-b">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -97,7 +100,7 @@ export default function AnalyzePage() {
       <div className="pt-12 pb-12 px-6 max-w-4xl mx-auto">
         <h1 className="text-5xl font-black mb-2">Data Analysis</h1>
         <p className="text-muted-foreground mb-10">
-          Upload your CSV or Excel file to explore statistics and insights.
+          Upload your CSV file to explore insights.
         </p>
 
         {!dataset ? (
@@ -108,21 +111,18 @@ export default function AnalyzePage() {
               </div>
             )}
 
-            {/* Upload box */}
             <div
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
               className={`bg-white rounded-3xl p-12 text-center border-2 transition ${
-                dragActive
-                  ? "border-primary bg-primary/5"
-                  : "border-orange-200"
+                dragActive ? "border-primary bg-primary/5" : "border-orange-200"
               } ${isLoading ? "opacity-60 pointer-events-none" : ""}`}
             >
               <div className="flex justify-center mb-6">
                 {isLoading ? (
-                  <Loader className="w-16 h-16 animate-spin text-primary" />
+                  <Loader className="w-16 h-16 animate-spin" />
                 ) : (
                   <div className="w-20 h-20 bg-blue-500 rounded-2xl flex items-center justify-center">
                     <BarChart3 className="w-10 h-10 text-white" />
@@ -133,10 +133,9 @@ export default function AnalyzePage() {
               <h2 className="text-3xl font-black mb-2">
                 {isLoading ? "Uploading..." : "Drop your file here"}
               </h2>
+
               <p className="text-muted-foreground mb-8">
-                {isLoading
-                  ? "Processing your file..."
-                  : "or click to browse your computer"}
+                {isLoading ? "Processing file..." : "or click to browse"}
               </p>
 
               <label>
@@ -146,7 +145,7 @@ export default function AnalyzePage() {
                 </Button>
                 <input
                   type="file"
-                  accept=".csv,.xlsx,.xls"
+                  accept=".csv"
                   className="hidden"
                   onChange={handleChange}
                   disabled={isLoading}
@@ -156,20 +155,22 @@ export default function AnalyzePage() {
           </>
         ) : (
           <>
-            {/* Results */}
-            <Card className="p-8 mb-8">
-              <h2 className="text-2xl font-bold mb-4">File Summary</h2>
+            <Card className="p-8 mb-6">
+              <h2 className="text-2xl font-bold mb-4">File Info</h2>
               <p><b>Name:</b> {dataset.fileName}</p>
-              <p><b>ID:</b> {dataset.fileId}</p>
               <p><b>Uploaded:</b> {dataset.uploadedAt.toLocaleDateString()}</p>
             </Card>
 
+            <Card className="p-8 mb-6">
+              <h3 className="text-xl font-bold mb-4">Summary</h3>
+              <p>{dataset.summary}</p>
+            </Card>
+
             <Card className="p-8 mb-8">
-              <h3 className="text-xl font-bold mb-4">Dataset Statistics</h3>
-              {Object.entries(dataset.stats || {}).map(([key, value]) => (
-                <div key={key} className="flex justify-between p-3 bg-muted/20 rounded mb-2">
-                  <span>{key}</span>
-                  <span>{String(value)}</span>
+              <h3 className="text-xl font-bold mb-4">Columns</h3>
+              {dataset.columns.map((col: string) => (
+                <div key={col} className="p-2 bg-muted/20 rounded mb-2">
+                  {col}
                 </div>
               ))}
             </Card>
