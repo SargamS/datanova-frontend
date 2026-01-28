@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,68 +12,66 @@ import {
   Sparkles,
   Loader2,
   Zap,
+  Upload,
+  AlertCircle
 } from 'lucide-react';
 
-const SAMPLE_SUMMARIES: Record<string, string> = {
-  'Executive Summary': `EXECUTIVE SUMMARY
-
-Dataset Analysis Overview:
-The uploaded dataset contains 15,234 records across 12 columns with diverse data types. Our analysis reveals several key insights:
-
-Key Findings:
-• Strong correlation between variables A and B (r=0.87), indicating strong relationship
-• Outliers detected in 3.2% of records, primarily in the revenue column
-• Distribution is positively skewed with median value 45% lower than mean
-• Seasonal trends visible in monthly aggregations with peak occurring in Q3
-
-Business Impact:
-These patterns suggest opportunities for predictive modeling and optimization. Recommend implementing automated anomaly detection and forecasting models for improved decision-making.`,
-  
-  'Technical Analysis': `TECHNICAL ANALYSIS
-
-Data Quality Assessment:
-- Data Completeness: 98.4% (missing values in 2 columns)
-- Outlier Detection: 127 anomalies identified using IQR method
-- Distribution Analysis: 6 numerical columns follow normal distribution
-- Correlation Matrix: High multicollinearity detected (VIF > 5) in columns C and D
-
-Statistical Insights:
-- Mean values range from 12.3 to 892.5 across numeric columns
-- Standard deviation indicates high variability in measurement columns
-- Skewness analysis reveals 4 left-skewed and 3 right-skewed distributions
-- Kurtosis values suggest presence of outliers in 5 columns
-
-Recommendations:
-Apply data normalization, feature engineering, and consider dimensionality reduction techniques before modeling.`,
-
-  'Business Insights': `BUSINESS INSIGHTS
-
-Performance Metrics:
-Revenue shows strong growth trajectory with 23% YoY increase. Customer acquisition cost has decreased by 15% while lifetime value increased by 31%, indicating improved operational efficiency.
-
-Market Trends:
-Geographic analysis reveals highest demand in North American markets (42% of total), followed by EU (28%). Emerging markets show 45% growth rate despite lower base volumes.
-
-Strategic Recommendations:
-1. Prioritize resource allocation to high-growth segments
-2. Implement targeted campaigns for seasonal demand peaks
-3. Develop retention programs for high-value customer cohorts
-4. Explore cross-selling opportunities in underperforming regions`,
-};
-
 export default function SummarizePage() {
+  // --- State ---
   const [summary, setSummary] = useState<string | null>(null);
-  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
   const [summaryStyle, setSummaryStyle] = useState('Executive Summary');
-  const fileId = null; // Declare the fileId variable
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleGenerateSummary = () => {
+  // --- Handlers ---
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileUpload(e.target.files[0]);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
     setIsGenerating(true);
-    setTimeout(() => {
-      setSummary(SAMPLE_SUMMARIES[summaryStyle] || SAMPLE_SUMMARIES['Executive Summary']);
+    setError(null);
+    setFileName(file.name);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      // We also send the summary style to the backend if your backend supports it
+      formData.append("style", summaryStyle);
+
+      const res = await fetch("https://datanova-backend.onrender.com/analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Analysis failed with status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Set the real summary from the backend
+      setSummary(data.summary);
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      setError(err.message || "Failed to generate summary. Please try again.");
+    } finally {
       setIsGenerating(false);
-    }, 2000);
+    }
   };
 
   const copyToClipboard = () => {
@@ -88,28 +86,26 @@ export default function SummarizePage() {
     const element = document.createElement('a');
     const file = new Blob([summary || ''], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
-    element.download = `summary-${Date.now()}.txt`;
+    element.download = `summary-${fileName || 'data'}.txt`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
   };
 
-
-
   return (
     <main className="min-h-screen bg-background text-foreground relative overflow-hidden">
-      {/* Animated background */}
+      {/* Animated background effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-20 right-10 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse opacity-40"></div>
         <div className="absolute bottom-20 left-10 w-80 h-80 bg-accent/20 rounded-full blur-3xl animate-pulse opacity-40" style={{ animationDelay: '1s' }}></div>
       </div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-background/70 backdrop-blur-xl border-b border-border/50 z-50 animate-float-up">
+      <nav className="fixed top-0 w-full bg-background/70 backdrop-blur-xl border-b border-border/50 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
           <Link href="/analyze" className="flex items-center gap-2 hover:text-primary transition group">
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-sm font-semibold">Back</span>
+            <span className="text-sm font-semibold">Back to Analyze</span>
           </Link>
         </div>
       </nav>
@@ -117,51 +113,72 @@ export default function SummarizePage() {
       {/* Main Content */}
       <div className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-4xl mx-auto">
+          
           {/* Header */}
-          <div className="mb-16 animate-float-up">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-primary/50 animate-bounce-soft">
-                <Zap className="w-8 h-8 text-white" />
+          <div className="mb-12">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-primary to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
+                <Zap className="w-7 h-7 text-white" />
               </div>
-              <h1 className="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">AI Summaries</h1>
+              <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-500">
+                AI Summaries
+              </h1>
             </div>
-            <p className="text-muted-foreground text-xl">
-              Generate intelligent, actionable summaries of your data powered by
-              GPT-4 AI
+            <p className="text-muted-foreground text-lg max-w-2xl">
+              Transform complex datasets into clear, actionable summaries using advanced AI analysis.
             </p>
           </div>
 
           {!summary ? (
             <>
+              {error && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  <p className="text-red-700 font-semibold">{error}</p>
+                </div>
+              )}
+
               {/* Upload Section */}
-              <Card className="p-10 mb-8 border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 shadow-lg">
-                <h2 className="text-3xl font-bold mb-6">
-                  Generate Summary
-                </h2>
-                <p className="text-muted-foreground mb-10 text-lg">
-                  Upload a data file to generate a comprehensive AI-powered
-                  summary with key insights and recommendations.
+              <Card className="p-10 mb-8 border-primary/20 bg-card shadow-xl">
+                <h2 className="text-2xl font-bold mb-4 text-foreground">Prepare Your Analysis</h2>
+                <p className="text-muted-foreground mb-8">
+                  Upload your CSV file and select a summary style to begin.
                 </p>
 
                 <div className="space-y-6">
+                  {/* Hidden Input */}
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    accept=".csv" 
+                    className="hidden" 
+                  />
+
                   <div>
-                    <label className="block text-sm font-semibold mb-3">
-                      Data File
-                    </label>
-                    <div className="border-2 border-dashed border-primary/40 rounded-2xl p-8 text-center hover:border-primary/70 transition cursor-pointer bg-primary/5">
-                      <FileText className="w-10 h-10 text-primary mx-auto mb-3" />
-                      <p className="text-base text-muted-foreground">
-                        Click or drag to upload your data file
+                    <label className="block text-sm font-semibold mb-3">Target Dataset</label>
+                    <div 
+                      onClick={handleButtonClick}
+                      className={`border-2 border-dashed rounded-2xl p-10 text-center transition cursor-pointer 
+                        ${isGenerating ? 'opacity-50 pointer-events-none' : 'border-primary/30 hover:border-primary hover:bg-primary/5'}
+                      `}
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="w-12 h-12 text-primary mx-auto animate-spin mb-4" />
+                      ) : (
+                        <Upload className="w-12 h-12 text-primary/60 mx-auto mb-4" />
+                      )}
+                      <p className="text-lg font-medium text-foreground">
+                        {fileName ? fileName : "Click to select a CSV file"}
                       </p>
+                      <p className="text-sm text-muted-foreground mt-1">Maximum file size: 10MB</p>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold mb-3">
-                      Summary Style
-                    </label>
+                    <label className="block text-sm font-semibold mb-3">Desired Summary Style</label>
                     <select 
-                      className="w-full px-5 py-3 rounded-xl border border-primary/30 bg-card text-foreground font-medium hover:border-primary/50 transition"
+                      className="w-full px-5 py-3 rounded-xl border border-input bg-background text-foreground hover:border-primary transition"
                       value={summaryStyle}
                       onChange={(e) => setSummaryStyle(e.target.value)}
                     >
@@ -173,107 +190,79 @@ export default function SummarizePage() {
                 </div>
 
                 <Button
-                  onClick={handleGenerateSummary}
+                  onClick={handleButtonClick}
                   disabled={isGenerating}
-                  className="w-full mt-10 gap-2 bg-gradient-to-r from-primary to-primary/80 hover:shadow-lg hover:shadow-primary/40 text-lg py-6 font-semibold"
+                  className="w-full mt-10 gap-2 text-lg py-6 font-bold"
                 >
                   {isGenerating ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Generating Summary...
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Generating AI Insights...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4" />
+                      <Sparkles className="w-5 h-5" />
                       Generate Summary
                     </>
                   )}
                 </Button>
               </Card>
 
-              {/* Features */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <Card className="p-6">
-                  <h3 className="font-semibold mb-2">Powered by GPT-4</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Advanced AI model for deep insights and comprehensive analysis
-                  </p>
-                </Card>
-
-                <Card className="p-6">
-                  <h3 className="font-semibold mb-2">Multiple Formats</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Get summaries in executive, technical, or business format
-                  </p>
-                </Card>
-
-                <Card className="p-6">
-                  <h3 className="font-semibold mb-2">Actionable Insights</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Receive specific recommendations for your business
-                  </p>
-                </Card>
-
-                <Card className="p-6">
-                  <h3 className="font-semibold mb-2">Export Ready</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Download summaries in multiple formats
-                  </p>
-                </Card>
+              {/* Info Grid */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {[
+                  { title: "GPT-4 Powered", desc: "Context-aware analysis of your specific variables." },
+                  { title: "Smart Formatting", desc: "Results optimized for reports and slides." },
+                  { title: "Anomaly Detection", desc: "AI highlights inconsistencies in your data." },
+                  { title: "Secure Processing", desc: "Data is analyzed and never stored permanently." }
+                ].map((feature, i) => (
+                  <Card key={i} className="p-5 border-border/50 bg-card/50">
+                    <h3 className="font-bold text-foreground mb-1">{feature.title}</h3>
+                    <p className="text-xs text-muted-foreground">{feature.desc}</p>
+                  </Card>
+                ))}
               </div>
             </>
           ) : (
             <>
               {/* Summary Display */}
-              <Card className="p-8 bg-white shadow-lg border-2 border-purple-100 rounded-2xl mb-6 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-40 h-40 bg-purple-100 rounded-full opacity-40 blur-2xl"></div>
-                <div className="flex items-center justify-between mb-6 relative z-10">
-                  <h2 className="text-2xl font-bold text-foreground">Your Summary</h2>
+              <Card className="p-8 bg-card border-2 border-primary/20 rounded-2xl mb-6 shadow-2xl relative">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                      <FileText className="w-6 h-6 text-primary" />
+                      {summaryStyle}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-1">Generated for: {fileName}</p>
+                  </div>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={copyToClipboard}
-                      className="gap-2 border-purple-200 text-foreground hover:bg-purple-50 font-semibold bg-transparent"
-                    >
+                    <Button variant="outline" size="sm" onClick={copyToClipboard} className="gap-2">
                       <Copy className="w-4 h-4" />
-                      {copiedToClipboard ? 'Copied!' : 'Copy'}
+                      {copiedToClipboard ? 'Copied' : 'Copy'}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={downloadSummary}
-                      className="gap-2 border-purple-200 text-foreground hover:bg-purple-50 font-semibold bg-transparent"
-                    >
+                    <Button variant="outline" size="sm" onClick={downloadSummary} className="gap-2">
                       <Download className="w-4 h-4" />
                       Download
                     </Button>
                   </div>
                 </div>
 
-                <div className="whitespace-pre-wrap bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-100 text-foreground text-sm leading-relaxed relative z-10">
+                <div className="whitespace-pre-wrap bg-muted/30 p-8 rounded-xl border border-border text-foreground text-base leading-relaxed font-sans">
                   {summary}
                 </div>
               </Card>
 
-              {/* Action Buttons */}
+              {/* Footer Actions */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/visualize" className="flex-1">
-                  <Button className="w-full gap-2">
-                    Create Visualizations
-                  </Button>
+                  <Button className="w-full py-6 font-bold">Explore Visualizations</Button>
                 </Link>
-                <Link href="/analyze" className="flex-1">
-                  <Button variant="outline" className="w-full gap-2 bg-transparent">
-                    Upload New File
-                  </Button>
-                </Link>
-                <Button
-                  variant="outline"
-                  className="flex-1 bg-transparent"
+                <Button 
+                  variant="outline" 
+                  className="flex-1 py-6 font-bold bg-transparent"
                   onClick={() => setSummary(null)}
                 >
-                  Generate Another
+                  Generate New Summary
                 </Button>
               </div>
             </>
