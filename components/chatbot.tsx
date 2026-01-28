@@ -1,79 +1,83 @@
-'use client';
+'use client'
 
-import React, { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Send, X, Sparkles, Loader, BrainCircuit, MessageSquare } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Send, X, Sparkles, Loader, MessageSquare } from 'lucide-react'
 
-// Types for the Chat
 interface Message {
-  role: 'user' | 'assistant';
-  content: string;
+  role: 'user' | 'assistant'
+  content: string
 }
 
-export default function AIAssistant({ csvData }: { csvData?: any }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function Chatbot({ csvData }: { csvData?: any }) {
+  const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: "I'm the DataNova AI. I can analyze your CSV or explain how our Figma export works. What's on your mind?" }
-  ]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+    {
+      role: 'assistant',
+      content:
+        "I'm the DataNova AI. I can analyze your CSV or explain how our Figma export works. What's on your mind?",
+    },
+  ])
+  const [input, setInput] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
-  // Website Knowledge Base
   const SITE_INFO = {
-    features: "DataNova offers AI data summarization, automated charting (Visualizer), and high-fidelity Figma exports for designers.",
-    figma: "Our Figma feature converts your CSV into a JSON format that our Figma Plugin uses to build instant UI components.",
-    visualizer: "The Visualizer creates Bar, Line, Pie, and Scatter plots. It also features a Pinterest-style inspiration gallery.",
-    export: "You can export your analysis as professional reports in TXT, JSON, or PNG formats."
-  };
+    features:
+      'DataNova offers AI data summarization, automated charting (Visualizer), and high-fidelity Figma exports for designers.',
+    figma:
+      'Our Figma feature converts your CSV into a JSON format that our Figma Plugin uses to build instant UI components.',
+    visualizer:
+      'The Visualizer creates Bar, Line, Pie, and Scatter plots. It also features a Pinterest-style inspiration gallery.',
+    export:
+      'You can export your analysis as professional reports in TXT, JSON, or PNG formats.',
+  }
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
-    
-    const userMsg = input;
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
-    setInput("");
-    setIsTyping(true);
+  const handleSend = () => {
+    if (!input.trim()) return
 
-    // AI Logic Engine
+    const userMsg = input
+    setMessages((prev) => [...prev, { role: 'user', content: userMsg }])
+    setInput('')
+    setIsTyping(true)
+
     setTimeout(() => {
-      let response = "";
-      const query = userMsg.toLowerCase();
+      let response = ''
+      const query = userMsg.toLowerCase()
 
-      // Priority 1: Website Functionality
-      if (query.includes("how") || query.includes("what is") || query.includes("feature")) {
-        if (query.includes("figma")) response = SITE_INFO.figma;
-        else if (query.includes("visual")) response = SITE_INFO.visualizer;
-        else response = SITE_INFO.features;
-      } 
-      // Priority 2: Dataset Analysis (If file is uploaded)
-      else if (csvData) {
-        if (query.includes("column")) {
-          response = `Your dataset "${csvData.fileName}" has these columns: ${csvData.columns?.join(", ")}.`;
-        } else if (query.includes("insight") || query.includes("summary")) {
-          response = `Analysis for ${csvData.fileName}: ${csvData.summary?.substring(0, 150)}... check the Summarize page for the full report!`;
+      if (query.includes('how') || query.includes('what') || query.includes('feature')) {
+        if (query.includes('figma')) response = SITE_INFO.figma
+        else if (query.includes('visual')) response = SITE_INFO.visualizer
+        else response = SITE_INFO.features
+      } else if (csvData) {
+        if (query.includes('column')) {
+          response = `Your dataset "${csvData.fileName}" has these columns: ${csvData.columns?.join(', ')}.`
+        } else if (query.includes('summary') || query.includes('insight')) {
+          response = `Analysis for ${csvData.fileName}: ${csvData.summary?.substring(
+            0,
+            150
+          )}...`
         } else {
-          response = `I see your data for ${csvData.fileName}. I can help you find specific columns or explain the summary.`;
+          response = `I can help analyze ${csvData.fileName}. Ask about columns or summaries.`
         }
-      } 
-      // Priority 3: Fallback
-      else {
-        response = "I'm ready to help! Please upload a CSV on the dashboard so I can provide specific insights about your data.";
+      } else {
+        response =
+          'Upload a CSV on the dashboard so I can give you specific insights about your data.'
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-      setIsTyping(false);
-    }, 1000);
-  };
+      setMessages((prev) => [...prev, { role: 'assistant', content: response }])
+      setIsTyping(false)
+    }, 1000)
+  }
 
   return (
     <>
-      <Button 
+      <Button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-slate-900 hover:bg-orange-600 shadow-xl z-50"
       >
@@ -86,11 +90,22 @@ export default function AIAssistant({ csvData }: { csvData?: any }) {
             <Sparkles size={16} className="text-orange-400" />
             <span className="font-bold text-sm uppercase italic">DataNova AI</span>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 text-sm">
             {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`p-3 rounded-xl max-w-[85%] ${m.role === 'user' ? 'bg-orange-600 text-white' : 'bg-white border shadow-sm'}`}>
+              <div
+                key={i}
+                className={`flex ${
+                  m.role === 'user' ? 'justify-end' : 'justify-start'
+                }`}
+              >
+                <div
+                  className={`p-3 rounded-xl max-w-[85%] ${
+                    m.role === 'user'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-white border shadow-sm'
+                  }`}
+                >
                   {m.content}
                 </div>
               </div>
@@ -100,17 +115,19 @@ export default function AIAssistant({ csvData }: { csvData?: any }) {
           </div>
 
           <div className="p-3 bg-white border-t flex gap-2">
-            <input 
-              className="flex-1 bg-slate-100 border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-orange-500" 
+            <input
+              className="flex-1 bg-slate-100 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-orange-500"
               placeholder="Ask about your data..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             />
-            <Button size="sm" onClick={handleSend} className="bg-slate-900"><Send size={14}/></Button>
+            <Button size="sm" onClick={handleSend} className="bg-slate-900">
+              <Send size={14} />
+            </Button>
           </div>
         </Card>
       )}
     </>
-  );
+  )
 }
