@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Chatbot } from '@/components/chatbot'
+import { DataProvider } from '@/context/DataContext' // 1. Import the Provider
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -39,9 +40,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        {children}
-        <Chatbot />
-        <Analytics />
+        {/* 2. Wrap everything in the DataProvider */}
+        <DataProvider>
+          {children}
+          <Chatbot />
+          <Analytics />
+        </DataProvider>
       </body>
     </html>
   )
