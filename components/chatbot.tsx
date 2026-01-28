@@ -1,217 +1,115 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { X, Send, MessageCircle, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Send, X, Sparkles, Loader, BrainCircuit, MessageSquare } from "lucide-react";
 
+// Types for the Chat
 interface Message {
-  id: string;
-  type: 'user' | 'bot';
-  text: string;
-  timestamp: Date;
+  role: 'user' | 'assistant';
+  content: string;
 }
 
-const SUGGESTED_QUESTIONS = [
-  "How do I upload my data?",
-  "What file formats are supported?",
-  "How does the AI summary work?",
-  "Can I export to Figma?",
-];
-
-const BOT_RESPONSES: Record<string, string> = {
-  "upload": "To upload your data, go to the Data Analysis page and drag & drop your CSV or Excel file. The file will be analyzed instantly!",
-  "format": "We support CSV, Excel (.xlsx), and .xls files. Each file can contain up to 50MB of data.",
-  "summary": "Our AI summary uses GPT-4 to analyze your data and generate comprehensive insights including statistics, trends, and actionable recommendations.",
-  "figma": "Yes! After creating your visualizations and summaries, you can export everything directly to your Figma workspace with a single click.",
-  "help": "I'm here to help! I can answer questions about features, file uploads, AI analysis, and exporting. What would you like to know?",
-};
-
-export function Chatbot() {
+export default function AIAssistant({ csvData }: { csvData?: any }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      type: 'bot',
-      text: 'Hello! 👋 I\'m the DataNova Assistant. How can I help you today?',
-      timestamp: new Date(),
-    },
+    { role: 'assistant', content: "I'm the DataNova AI. I can analyze your CSV or explain how our Figma export works. What's on your mind?" }
   ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollToBottom();
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const getResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
+  // Website Knowledge Base
+  const SITE_INFO = {
+    features: "DataNova offers AI data summarization, automated charting (Visualizer), and high-fidelity Figma exports for designers.",
+    figma: "Our Figma feature converts your CSV into a JSON format that our Figma Plugin uses to build instant UI components.",
+    visualizer: "The Visualizer creates Bar, Line, Pie, and Scatter plots. It also features a Pinterest-style inspiration gallery.",
+    export: "You can export your analysis as professional reports in TXT, JSON, or PNG formats."
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
     
-    if (lowerMessage.includes('upload') || lowerMessage.includes('file')) {
-      return BOT_RESPONSES.upload;
-    } else if (lowerMessage.includes('format') || lowerMessage.includes('support')) {
-      return BOT_RESPONSES.format;
-    } else if (lowerMessage.includes('summary') || lowerMessage.includes('ai')) {
-      return BOT_RESPONSES.summary;
-    } else if (lowerMessage.includes('figma') || lowerMessage.includes('export')) {
-      return BOT_RESPONSES.figma;
-    } else {
-      return BOT_RESPONSES.help;
-    }
-  };
+    const userMsg = input;
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setInput("");
+    setIsTyping(true);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      text: inputValue,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue('');
-    setIsLoading(true);
-
-    // Simulate bot response delay
+    // AI Logic Engine
     setTimeout(() => {
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'bot',
-        text: getResponse(inputValue),
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, botMessage]);
-      setIsLoading(false);
-    }, 500);
-  };
+      let response = "";
+      const query = userMsg.toLowerCase();
 
-  const handleSuggestedQuestion = (question: string) => {
-    setInputValue(question);
+      // Priority 1: Website Functionality
+      if (query.includes("how") || query.includes("what is") || query.includes("feature")) {
+        if (query.includes("figma")) response = SITE_INFO.figma;
+        else if (query.includes("visual")) response = SITE_INFO.visualizer;
+        else response = SITE_INFO.features;
+      } 
+      // Priority 2: Dataset Analysis (If file is uploaded)
+      else if (csvData) {
+        if (query.includes("column")) {
+          response = `Your dataset "${csvData.fileName}" has these columns: ${csvData.columns?.join(", ")}.`;
+        } else if (query.includes("insight") || query.includes("summary")) {
+          response = `Analysis for ${csvData.fileName}: ${csvData.summary?.substring(0, 150)}... check the Summarize page for the full report!`;
+        } else {
+          response = `I see your data for ${csvData.fileName}. I can help you find specific columns or explain the summary.`;
+        }
+      } 
+      // Priority 3: Fallback
+      else {
+        response = "I'm ready to help! Please upload a CSV on the dashboard so I can provide specific insights about your data.";
+      }
+
+      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      setIsTyping(false);
+    }, 1000);
   };
 
   return (
     <>
-      {/* Floating Button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-8 right-8 w-20 h-20 bg-gradient-to-br from-primary via-blue-500 to-primary/80 text-white rounded-full shadow-2xl shadow-primary/60 hover:shadow-2xl hover:shadow-primary/80 hover:scale-125 transition-all z-40 flex items-center justify-center group animate-bounce-soft"
-          aria-label="Open chat"
-        >
-          <MessageCircle className="w-8 h-8 group-hover:rotate-12 transition-transform" />
-          <span className="absolute inset-0 rounded-full bg-primary/20 animate-pulse"></span>
-        </button>
-      )}
+      <Button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-slate-900 hover:bg-orange-600 shadow-xl z-50"
+      >
+        {isOpen ? <X /> : <MessageSquare />}
+      </Button>
 
-      {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-8 right-8 w-96 h-[600px] bg-card border border-border/50 rounded-3xl shadow-2xl shadow-primary/40 flex flex-col z-40 overflow-hidden animate-scale-in backdrop-blur-xl">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-primary via-blue-500 to-primary/80 text-primary-foreground p-6 flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-lg">DataNova Assistant</h3>
-              <p className="text-xs opacity-90">AI-powered support 24/7</p>
-            </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-2 hover:bg-white/20 rounded-lg transition"
-              aria-label="Close chat"
-            >
-              <X className="w-5 h-5" />
-            </button>
+        <Card className="fixed bottom-24 right-6 w-80 h-[450px] z-50 flex flex-col shadow-2xl border-none rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-slate-900 p-4 text-white flex items-center gap-2">
+            <Sparkles size={16} className="text-orange-400" />
+            <span className="font-bold text-sm uppercase italic">DataNova AI</span>
           </div>
-
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.type === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                <div
-                  className={`max-w-xs px-4 py-3 rounded-lg ${
-                    message.type === 'user'
-                      ? 'bg-gradient-to-br from-primary to-primary/80 text-white rounded-br-none shadow-md shadow-primary/20'
-                      : 'bg-muted text-foreground rounded-bl-none'
-                  }`}
-                >
-                  <p className="text-sm">{message.text}</p>
-                  <span className="text-xs opacity-70 mt-1 block">
-                    {message.timestamp.toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
+          
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 text-sm">
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`p-3 rounded-xl max-w-[85%] ${m.role === 'user' ? 'bg-orange-600 text-white' : 'bg-white border shadow-sm'}`}>
+                  {m.content}
                 </div>
               </div>
             ))}
-
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted text-foreground px-4 py-2 rounded-lg rounded-bl-none flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Typing...</span>
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
+            {isTyping && <Loader className="animate-spin text-slate-300" size={16} />}
+            <div ref={scrollRef} />
           </div>
 
-          {/* Suggested Questions */}
-          {messages.length === 1 && !isLoading && (
-            <div className="px-4 py-3 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">
-                Quick questions:
-              </p>
-              <div className="space-y-2">
-                {SUGGESTED_QUESTIONS.map((question) => (
-                  <button
-                    key={question}
-                    onClick={() => handleSuggestedQuestion(question)}
-                    className="w-full text-left text-xs p-2 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition font-medium"
-                  >
-                    {question}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Input Area */}
-          <div className="border-t border-border p-4 bg-card/50">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !isLoading) {
-                    handleSendMessage();
-                  }
-                }}
-                placeholder="Ask me anything..."
-                className="flex-1 px-3 py-2 rounded-lg border border-border bg-muted text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={isLoading || !inputValue.trim()}
-                className="p-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-lg hover:shadow-lg hover:shadow-primary/40 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Send message"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
+          <div className="p-3 bg-white border-t flex gap-2">
+            <input 
+              className="flex-1 bg-slate-100 border-none rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-orange-500" 
+              placeholder="Ask about your data..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            />
+            <Button size="sm" onClick={handleSend} className="bg-slate-900"><Send size={14}/></Button>
           </div>
-        </div>
+        </Card>
       )}
     </>
   );
