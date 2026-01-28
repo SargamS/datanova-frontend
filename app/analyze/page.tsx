@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Upload, BarChart3, Loader } from "lucide-react";
+import { ArrowLeft, Upload, Loader } from "lucide-react";
 
 export default function AnalyzePage() {
   const [dragActive, setDragActive] = useState(false);
@@ -12,35 +12,46 @@ export default function AnalyzePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Prevent browser default behavior for drag & drop
+  useEffect(() => {
+    const preventDefaults = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    window.addEventListener("dragover", preventDefaults);
+    window.addEventListener("drop", preventDefaults);
+
+    return () => {
+      window.removeEventListener("dragover", preventDefaults);
+      window.removeEventListener("drop", preventDefaults);
+    };
+  }, []);
+
+  // Drag handlers
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      handleFileUpload(files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files[0]) {
-      handleFileUpload(files[0]);
+    if (e.target.files && e.target.files[0]) {
+      handleFileUpload(e.target.files[0]);
     }
   };
 
-  // ✅ FINAL working upload function
+  // Upload file to backend
   const handleFileUpload = async (file: File) => {
     setIsLoading(true);
     setError(null);
@@ -59,7 +70,6 @@ export default function AnalyzePage() {
 
       if (!response.ok) {
         const text = await response.text();
-        console.error("Backend error:", text);
         throw new Error(text);
       }
 
@@ -72,7 +82,6 @@ export default function AnalyzePage() {
         summary: data.summary,
         columns: data.columns,
       });
-
     } catch (err) {
       console.error("Upload failed:", err);
       setError("Upload failed. Check backend or file format.");
@@ -81,13 +90,11 @@ export default function AnalyzePage() {
     }
   };
 
-  const clearDataset = () => {
-    setDataset(null);
-  };
+  const clearDataset = () => setDataset(null);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-purple-50">
-
+      {/* Navigation */}
       <nav className="sticky top-0 bg-white/85 backdrop-blur-sm border-b">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -113,32 +120,32 @@ export default function AnalyzePage() {
 
             <div
               onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
               onDragOver={handleDrag}
+              onDragLeave={handleDrag}
               onDrop={handleDrop}
-              className={`bg-white rounded-3xl p-12 text-center border-2 transition ${
-                dragActive ? "border-primary bg-primary/5" : "border-orange-200"
-              } ${isLoading ? "opacity-60 pointer-events-none" : ""}`}
+              className={`bg-white rounded-3xl p-12 text-center border-2 transition
+                ${dragActive ? "border-primary bg-primary/10" : "border-orange-200"}
+                ${isLoading ? "opacity-60 pointer-events-none" : ""}
+              `}
             >
               <div className="flex justify-center mb-6">
                 {isLoading ? (
-                  <Loader className="w-16 h-16 animate-spin" />
+                  <Loader className="w-16 h-16 animate-spin text-primary" />
                 ) : (
                   <div className="w-20 h-20 bg-blue-500 rounded-2xl flex items-center justify-center">
-                    <BarChart3 className="w-10 h-10 text-white" />
+                    <Upload className="w-10 h-10 text-white" />
                   </div>
                 )}
               </div>
 
               <h2 className="text-3xl font-black mb-2">
-                {isLoading ? "Uploading..." : "Drop your file here"}
+                {isLoading ? "Uploading..." : "Drag & Drop Your CSV File Here"}
               </h2>
-
               <p className="text-muted-foreground mb-8">
-                {isLoading ? "Processing file..." : "or click to browse"}
+                {isLoading ? "Processing file..." : "or click the button below to browse"}
               </p>
 
-              <label>
+              <label className="inline-block">
                 <Button disabled={isLoading}>
                   <Upload className="w-4 h-4 mr-2" />
                   Choose File
