@@ -27,16 +27,16 @@ export const metadata: Metadata = {
         url: '/icon.svg',
         type: 'image/svg+xml',
       },
-    ], // <-- Ensure this array is closed correctly
+    ], 
     apple: '/apple-icon.png',
   },
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en">
       <body className="font-sans antialiased">

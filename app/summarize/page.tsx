@@ -1,193 +1,183 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useData } from "@/context/DataContext"; // Using Shared Context
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  ArrowLeft, FileText, Copy, Download, Sparkles, 
-  Loader2, Zap, Upload, AlertCircle, Lightbulb, ExternalLink, FileJson
+  ArrowLeft, FileText, Download, Sparkles, 
+  Loader2, AlertCircle, Lightbulb, ExternalLink, FileJson, History
 } from 'lucide-react';
 
-interface SummaryData {
-  mainSummary: string;
-  insights: string[];
-  resources: { title: string; url: string }[];
-}
-
 export default function SummarizePage() {
-  const [data, setData] = useState<SummaryData | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const { sharedData } = useData(); // Global dataset
+  const [localData, setLocalData] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summaryStyle, setSummaryStyle] = useState('Executive Summary');
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = async (file: File) => {
+  // Effect: Auto-load data if global state exists, but allow local re-generation for styles
+  useEffect(() => {
+    if (sharedData && !localData) {
+      setLocalData(sharedData);
+    }
+  }, [sharedData, localData]);
+
+  const handleStyleChange = async (newStyle: string) => {
+    setSummaryStyle(newStyle);
+    if (!sharedData) return;
+
     setIsGenerating(true);
     setError(null);
-    setFileName(file.name);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("style", summaryStyle); // Sending style to backend
-
+      // Re-triggering the backend with the NEW style using the same data context
       const res = await fetch("https://datanova-backend.onrender.com/analyze", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          existingData: sharedData, // Send back the context
+          style: newStyle 
+        }),
       });
 
-      if (!res.ok) throw new Error("Backend failed to process file.");
+      if (!res.ok) throw new Error("Failed to re-generate summary style.");
 
       const result = await res.json();
-      
-      // Assuming your backend returns these fields. 
-      // If your backend only returns a string, we "fake" the split for UI logic.
-      setData({
-        mainSummary: result.summary || "No summary generated.",
-        insights: result.insights || [
-          "Check for high variance in numeric columns.",
-          "Identify potential outliers in the top 5% of records.",
-          "Consider normalizing data for better AI modeling."
-        ],
-        resources: result.resources || [
-          { title: "Pandas Data Cleaning Guide", url: "https://pandas.pydata.org/docs/user_guide/10min.html" },
-          { title: "Kaggle: Exploratory Data Analysis Tutorial", url: "https://www.kaggle.com/learn/exploratory-data-analysis" }
-        ]
-      });
+      setLocalData(result);
     } catch (err: any) {
-      setError(err.message);
+      setError("Could not update summary style. Using default.");
     } finally {
       setIsGenerating(false);
     }
   };
 
   const exportSummary = (format: 'txt' | 'json') => {
-    if (!data) return;
-    const content = format === 'json' ? JSON.stringify(data, null, 2) : data.mainSummary;
+    if (!localData) return;
+    const content = format === 'json' ? JSON.stringify(localData, null, 2) : localData.summary;
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `summary-${Date.now()}.${format}`;
+    a.download = `DataNova_Summary.${format}`;
     a.click();
   };
 
   return (
     <main className="min-h-screen bg-slate-50 pb-20">
       <nav className="h-16 border-b bg-white/80 backdrop-blur-md sticky top-0 z-50 flex items-center px-6">
-        <Link href="/analyze" className="flex items-center gap-2 text-sm font-medium hover:text-primary">
-          <ArrowLeft className="w-4 h-4" /> Back
+        <Link href="/" className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-orange-600">
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
       </nav>
 
-      <div className="max-w-5xl mx-auto pt-12 px-6">
-        <div className="mb-10">
-          <h1 className="text-4xl font-black text-slate-900 flex items-center gap-3">
-            <Sparkles className="text-purple-600" /> AI Data Summary
-          </h1>
-          <p className="text-slate-500 mt-2">Get professional insights in multiple formats instantly.</p>
+      <div className="max-w-6xl mx-auto pt-12 px-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+          <div>
+            <h1 className="text-4xl font-black text-slate-900 flex items-center gap-3 tracking-tighter uppercase italic">
+              <Sparkles className="text-orange-500" /> AI Summarizer
+            </h1>
+            <p className="text-slate-500 mt-2">
+              {sharedData ? `Currently Analyzing: ${sharedData.fileName}` : "Upload a file on the Dashboard to begin."}
+            </p>
+          </div>
+
+          {sharedData && (
+            <div className="flex flex-col gap-2">
+               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Tone</label>
+               <div className="flex p-1 bg-slate-200 rounded-lg">
+                  {['Executive', 'Technical', 'Business'].map((style) => (
+                    <button
+                      key={style}
+                      onClick={() => handleStyleChange(style)}
+                      className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
+                        summaryStyle === style ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {style}
+                    </button>
+                  ))}
+               </div>
+            </div>
+          )}
         </div>
 
-        {!data ? (
-          <Card className="p-8 border-dashed border-2 bg-white shadow-none">
-            {error && <div className="mb-4 text-red-500 flex items-center gap-2"><AlertCircle size={16}/> {error}</div>}
-            
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div>
-                  <label className="text-sm font-bold mb-2 block">1. Choose Format</label>
-                  <select 
-                    className="w-full p-3 rounded-lg border bg-white"
-                    value={summaryStyle}
-                    onChange={(e) => setSummaryStyle(e.target.value)}
-                  >
-                    <option>Executive Summary</option>
-                    <option>Technical Analysis</option>
-                    <option>Business Insights</option>
-                  </select>
-                </div>
-                
-                <input type="file" ref={fileInputRef} onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} className="hidden" accept=".csv" />
-                
-                <Button 
-                  onClick={() => fileInputRef.current?.click()} 
-                  disabled={isGenerating}
-                  className="w-full h-16 text-lg font-bold"
-                >
-                  {isGenerating ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2" />}
-                  Upload & Generate
-                </Button>
-              </div>
-
-              <div className="bg-slate-100 rounded-xl p-6 flex flex-col justify-center">
-                <h3 className="font-bold text-slate-700 mb-2">Supported Features:</h3>
-                <ul className="text-sm text-slate-600 space-y-2">
-                  <li className="flex items-center gap-2">✅ Multiple Formats (Exec, Tech, Business)</li>
-                  <li className="flex items-center gap-2">✅ Actionable Business Insights</li>
-                  <li className="flex items-center gap-2">✅ Learning Resource Recommendations</li>
-                  <li className="flex items-center gap-2">✅ Export to TXT or JSON</li>
-                </ul>
-              </div>
-            </div>
+        {!sharedData ? (
+          <Card className="p-16 border-dashed border-2 flex flex-col items-center justify-center text-center bg-white/50">
+            <History size={48} className="text-slate-200 mb-4" />
+            <h2 className="text-xl font-bold text-slate-800">No Active Dataset</h2>
+            <p className="text-slate-500 max-w-xs mb-6">Please return to the dashboard and upload a CSV file to generate an AI summary.</p>
+            <Button asChild className="bg-orange-600">
+              <Link href="/">Go to Dashboard</Link>
+            </Button>
           </Card>
         ) : (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header / Export */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border">
-              <div>
-                <p className="text-xs font-bold text-purple-600 uppercase tracking-widest">{summaryStyle}</p>
-                <h2 className="font-bold text-slate-800">{fileName}</h2>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => exportSummary('txt')}><Download size={14} className="mr-2"/> TXT</Button>
-                <Button variant="outline" size="sm" onClick={() => exportSummary('json')}><FileJson size={14} className="mr-2"/> JSON</Button>
-                <Button variant="ghost" size="sm" onClick={() => setData(null)}>New</Button>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {/* Main Summary */}
-              <Card className="md:col-span-2 shadow-sm border-none">
-                <CardContent className="pt-6">
-                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><FileText size={18} className="text-blue-500"/> Analysis</h3>
-                  <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap">
-                    {data.mainSummary}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            
+            {/* Main Content */}
+            <div className="lg:col-span-8 space-y-6">
+              <Card className="border-none shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden bg-white">
+                <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
+                  <div className="flex items-center gap-2">
+                    <FileText size={18} className="text-orange-400" />
+                    <span className="text-xs font-bold uppercase tracking-widest">{summaryStyle} View</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => exportSummary('txt')} className="h-8 text-[10px] font-bold hover:bg-white/10">TXT</Button>
+                    <Button variant="ghost" size="sm" onClick={() => exportSummary('json')} className="h-8 text-[10px] font-bold hover:bg-white/10">JSON</Button>
+                  </div>
+                </div>
+                <CardContent className="p-8 md:p-12 relative">
+                  {isGenerating && (
+                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+                      <Loader2 className="animate-spin text-orange-500 mb-2" size={32} />
+                      <p className="text-sm font-bold text-slate-600">Re-shaping insights...</p>
+                    </div>
+                  )}
+                  <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed text-lg whitespace-pre-wrap">
+                    {localData?.summary || sharedData.summary}
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Sidebar: Insights & Resources */}
-              <div className="space-y-6">
-                <Card className="bg-amber-50 border-amber-100 shadow-none">
-                  <CardContent className="pt-6">
-                    <h3 className="font-bold text-amber-800 mb-3 flex items-center gap-2"><Lightbulb size={18}/> Insights</h3>
-                    <ul className="space-y-3">
-                      {data.insights.map((insight, i) => (
-                        <li key={i} className="text-sm text-amber-900 bg-white/50 p-2 rounded-md border border-amber-200/50">
-                          {insight}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                <Card className="shadow-none border-slate-200">
-                  <CardContent className="pt-6">
-                    <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2"><ExternalLink size={18} className="text-purple-500"/> Resources</h3>
-                    <div className="space-y-2">
-                      {data.resources.map((res, i) => (
-                        <a key={i} href={res.url} target="_blank" rel="noreferrer" className="block p-3 rounded-lg border bg-slate-50 hover:bg-white hover:border-purple-300 transition text-sm font-medium text-slate-700">
-                          {res.title}
-                        </a>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
             </div>
+
+            {/* Sidebar */}
+            <div className="lg:col-span-4 space-y-6">
+              {/* Quick Insights */}
+              <Card className="bg-orange-50 border-orange-100 shadow-none rounded-2xl">
+                <CardContent className="p-6">
+                  <h3 className="font-bold text-orange-800 mb-4 flex items-center gap-2">
+                    <Lightbulb size={20}/> Key Takeaways
+                  </h3>
+                  <ul className="space-y-3">
+                    {(localData?.insights || sharedData.insights || []).map((insight: string, i: number) => (
+                      <li key={i} className="text-sm text-orange-900 flex gap-2">
+                        <span className="text-orange-400 font-bold">•</span> {insight}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+
+              {/* Resource Links */}
+              <Card className="shadow-none border-slate-200 rounded-2xl">
+                <CardContent className="p-6">
+                  <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <ExternalLink size={20} className="text-blue-500"/> Recommended Reading
+                  </h3>
+                  <div className="space-y-2">
+                    {(localData?.resources || sharedData.resources || []).map((res: any, i: number) => (
+                      <a key={i} href={res.url} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 hover:bg-white hover:border-orange-300 transition text-sm font-bold text-slate-700">
+                        <span className="truncate">{res.title}</span>
+                        <ArrowLeft size={14} className="rotate-180 text-slate-300" />
+                      </a>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
           </div>
         )}
       </div>
