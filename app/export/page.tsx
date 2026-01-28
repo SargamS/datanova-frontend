@@ -1,289 +1,378 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { ArrowLeft, Upload, CheckCircle2, Loader2, Share2 } from 'lucide-react';
+import React, { useState, useRef } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ArrowLeft, Upload, Loader, Palette, Download, Copy, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function ExportPage() {
-  const [isExporting, setIsExporting] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [exportComplete, setExportComplete] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [figmaData, setFigmaData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [exported, setExported] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const connectFigma = () => {
-    setIsConnected(true);
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
   };
 
-  const startExport = async () => {
-    setIsExporting(true);
-    // Simulate export process
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileUpload(e.target.files[0]);
+    }
+  };
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (file: File) => {
+    setIsLoading(true);
+    setError(null);
+    setExported(false);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("https://datanova-backend.onrender.com/analyze", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Upload failed: ${res.status}`);
+      }
+
+      const data = await res.json();
+      
+      // Generate Figma frames from data
+      const figmaFrames = generateFigmaFrames(data);
+
+      setFigmaData({
+        fileName: file.name,
+        uploadedAt: new Date(),
+        columns: data.columns || [],
+        summary: data.summary || "",
+        frames: figmaFrames,
+        figmaFile: {
+          name: `${file.name.replace('.csv', '')}_design`,
+          url: `figma://file/${Math.random().toString(36).substring(7)}`,
+        },
+      });
+    } catch (err) {
+      console.error("Upload error:", err);
+      setError("Failed to generate Figma export. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Generate Figma frame data
+  const generateFigmaFrames = (data: any) => {
+    const frames = [];
+
+    // Header Frame
+    frames.push({
+      name: "Header",
+      type: "header",
+      width: 1200,
+      height: 200,
+      elements: [
+        { type: "text", content: "Data Dashboard", fontSize: 48, color: "#f97316" },
+        { type: "text", content: "AI-Powered Insights", fontSize: 24, color: "#8b5cf6" },
+      ],
+    });
+
+    // Data Table Frame
+    frames.push({
+      name: "Data Table",
+      type: "table",
+      width: 1200,
+      height: 600,
+      columns: data.columns?.slice(0, 5) || [],
+      rows: 10,
+    });
+
+    // Stats Frame
+    frames.push({
+      name: "Statistics",
+      type: "stats",
+      width: 1200,
+      height: 400,
+      stats: [
+        { label: "Total Columns", value: data.columns?.length || 0 },
+        { label: "Data Quality", value: "High" },
+        { label: "Completeness", value: "95%" },
+      ],
+    });
+
+    return frames;
+  };
+
+  const handleExportToFigma = () => {
+    setExported(true);
+    // In real app, this would use Figma API
     setTimeout(() => {
-      setIsExporting(false);
-      setExportComplete(true);
-    }, 2500);
+      alert("Figma file created! Check your Figma workspace.");
+    }, 1000);
+  };
+
+  const handleCopyFigmaLink = () => {
+    navigator.clipboard.writeText(figmaData.figmaFile.url);
+    alert("Figma link copied to clipboard!");
+  };
+
+  const clearFigmaData = () => {
+    setFigmaData(null);
+    setExported(false);
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground relative overflow-hidden">
-      {/* Animated background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-20 right-10 w-96 h-96 bg-yellow-500/20 rounded-full blur-3xl animate-pulse opacity-40"></div>
-        <div className="absolute bottom-20 left-10 w-80 h-80 bg-primary/20 rounded-full blur-3xl animate-pulse opacity-40" style={{ animationDelay: '1s' }}></div>
-      </div>
-
+    <main className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-pink-50">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-background/70 backdrop-blur-xl border-b border-border/50 z-50 animate-float-up">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
-          <Link href="/" className="flex items-center gap-2 hover:text-primary transition group">
-            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-sm font-semibold">Back</span>
+      <nav className="sticky top-0 bg-white/85 backdrop-blur-sm border-b z-50">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 font-semibold hover:text-orange-600 transition">
+            <ArrowLeft className="w-5 h-5" />
+            Back to Home
           </Link>
+          {figmaData && (
+            <Button onClick={clearFigmaData} variant="outline">
+              Create New Export
+            </Button>
+          )}
         </div>
       </nav>
 
-      {/* Main Content */}
-      <div className="pt-28 pb-12 px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="mb-16 animate-float-up">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center shadow-xl shadow-yellow-500/50 animate-bounce-soft">
-                <Share2 className="w-8 h-8 text-white" />
+      <div className="pt-12 pb-12 px-6 max-w-6xl mx-auto">
+        <div className="mb-10">
+          <h1 className="text-5xl font-black mb-2 bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
+            Figma Export
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Export your data as beautiful Figma designs for seamless team collaboration.
+          </p>
+        </div>
+
+        {!figmaData ? (
+          <>
+            {error && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <p className="text-red-700 font-semibold">{error}</p>
               </div>
-              <h1 className="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-yellow-600">Figma Export</h1>
-            </div>
-            <p className="text-muted-foreground text-xl">
-              Seamlessly export your analysis, summaries, and visualizations
-              directly to Figma for collaboration
-            </p>
-          </div>
+            )}
 
-          {!exportComplete ? (
-            <>
-              {/* Connection Status */}
-              <Card className="p-10 mb-8 border-yellow-500/30 bg-gradient-to-br from-yellow-500/5 to-yellow-500/10 shadow-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold mb-2">
-                      {isConnected
-                        ? 'Figma Connected'
-                        : 'Connect to Figma'}
-                    </h2>
-                    <p className="text-muted-foreground">
-                      {isConnected
-                        ? 'Ready to export your work'
-                        : 'Authorize DataNova to access your Figma workspace'}
-                    </p>
-                  </div>
-                  {isConnected ? (
-                    <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center shadow-lg shadow-yellow-500/20">
-                      <CheckCircle2 className="w-7 h-7 text-white" />
-                    </div>
-                  ) : (
-                    <Button onClick={connectFigma} className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:shadow-lg hover:shadow-yellow-500/40 font-semibold">
-                      Connect Figma
-                    </Button>
-                  )}
-                </div>
-              </Card>
-
-              {isConnected && (
+            <div
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className={`bg-white rounded-3xl p-16 text-center border-2 transition-all duration-300 shadow-lg
+                ${dragActive ? "border-orange-500 bg-orange-50 scale-105" : "border-orange-200 hover:border-orange-300"}
+                ${isLoading ? "opacity-60 pointer-events-none" : ""}
+              `}
+            >
+              {isLoading ? (
                 <>
-                  {/* Export Options */}
-                  <div className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-6">
-                      What to Export
-                    </h2>
-                    <div className="space-y-4">
-                      {[
-                        {
-                          name: 'Data Summary',
-                          description: 'AI-generated insights and key findings',
-                        },
-                        {
-                          name: 'Visualizations',
-                          description: 'Interactive charts and infographics',
-                        },
-                        {
-                          name: 'Analysis Report',
-                          description: 'Detailed statistical analysis',
-                        },
-                        {
-                          name: 'Recommendations',
-                          description: 'Actionable insights and next steps',
-                        },
-                      ].map((item, i) => (
-                        <label
-                          key={i}
-                          className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-card/50 cursor-pointer transition"
-                        >
-                          <input
-                            type="checkbox"
-                            defaultChecked
-                            className="rounded"
-                          />
-                          <div>
-                            <p className="font-medium">{item.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {item.description}
-                            </p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
+                  <Loader className="w-16 h-16 animate-spin text-orange-600 mx-auto mb-6" />
+                  <h2 className="text-3xl font-black mb-2">Preparing Figma Export...</h2>
+                  <p className="text-muted-foreground">Creating design frames from your data</p>
+                </>
+              ) : (
+                <>
+                  <Palette className="w-20 h-20 text-orange-400 mx-auto mb-6" />
+                  <h2 className="text-4xl font-black mb-2">
+                    Upload CSV for Figma
+                  </h2>
+                  <p className="text-muted-foreground text-lg mb-8">
+                    Automatically convert data into Figma designs
+                  </p>
 
-                  {/* Export Configuration */}
-                  <Card className="p-8 mb-8">
-                    <h3 className="text-xl font-semibold mb-6">
-                      Export Configuration
-                    </h3>
-                    <div className="space-y-6">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Figma Project
-                        </label>
-                        <select className="w-full px-4 py-2 rounded-lg border border-border bg-card text-foreground">
-                          <option>Select a project...</option>
-                          <option>DataNova Project</option>
-                          <option>Design System</option>
-                          <option>Brand Assets</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          File Name
-                        </label>
-                        <input
-                          type="text"
-                          defaultValue="DataNova Export - [Date]"
-                          className="w-full px-4 py-2 rounded-lg border border-border bg-card text-foreground"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="flex items-center gap-2">
-                          <input type="checkbox" defaultChecked />
-                          <span className="text-sm font-medium">
-                            Create new page
-                          </span>
-                        </label>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Create a new page in the selected project
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Export Button */}
-                  <Button
-                    onClick={startExport}
-                    disabled={isExporting}
-                    className="w-full gap-2"
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleChange}
+                    disabled={isLoading}
+                  />
+                  <Button 
+                    onClick={handleButtonClick}
+                    disabled={isLoading} 
                     size="lg"
+                    className="bg-gradient-to-r from-orange-600 to-pink-600 hover:from-orange-700 hover:to-pink-700 text-white font-bold px-8 py-6 text-lg"
                   >
-                    {isExporting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Exporting...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4" />
-                        Export to Figma
-                      </>
-                    )}
+                    <Upload className="w-5 h-5 mr-2" />
+                    Choose CSV File
                   </Button>
                 </>
               )}
-            </>
-          ) : (
-            <>
-              {/* Success Message */}
-              <div className="text-center mb-12">
-                <div className="flex justify-center mb-6">
-                  <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="w-10 h-10 text-primary" />
+            </div>
+
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="p-6 border-orange-200">
+                <Palette className="w-10 h-10 text-orange-600 mb-4" />
+                <h3 className="font-bold text-lg mb-2">Auto-Design</h3>
+                <p className="text-sm text-muted-foreground">
+                  Automatically generate beautiful Figma frames
+                </p>
+              </Card>
+              <Card className="p-6 border-pink-200">
+                <Download className="w-10 h-10 text-pink-600 mb-4" />
+                <h3 className="font-bold text-lg mb-2">Direct Export</h3>
+                <p className="text-sm text-muted-foreground">
+                  Export directly to your Figma workspace
+                </p>
+              </Card>
+              <Card className="p-6 border-purple-200">
+                <Copy className="w-10 h-10 text-purple-600 mb-4" />
+                <h3 className="font-bold text-lg mb-2">Team Sharing</h3>
+                <p className="text-sm text-muted-foreground">
+                  Share with your team instantly
+                </p>
+              </Card>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* File Info Header */}
+            <Card className="p-6 mb-8 border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-orange-100 rounded-lg">
+                    <Palette className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg">{figmaData.figmaFile.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {figmaData.frames.length} frames generated
+                    </p>
                   </div>
                 </div>
-
-                <h2 className="text-3xl font-bold mb-4">
-                  Export Successful!
-                </h2>
-                <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-                  Your data analysis, visualizations, and summaries have been
-                  successfully exported to your Figma workspace. You can now
-                  collaborate with your team and further customize the designs.
-                </p>
-
-                <div className="bg-card border border-primary/30 rounded-lg p-6 mb-8">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Exported to
-                  </p>
-                  <p className="font-semibold">DataNova Project</p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Open in Figma →
-                  </p>
-                </div>
+                {exported && (
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-semibold">Exported Successfully!</span>
+                  </div>
+                )}
               </div>
+            </Card>
 
-              {/* Next Steps */}
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold mb-6">What's Next?</h3>
-                <div className="grid md:grid-cols-3 gap-6">
-                  <Card className="p-6">
-                    <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center mb-4">
-                      <span className="text-primary font-semibold">1</span>
+            {/* Figma Frames Preview */}
+            <div className="mb-8 space-y-6">
+              {figmaData.frames.map((frame: any, index: number) => (
+                <Card key={index} className="p-8 border-2 border-orange-200">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold mb-2">{frame.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {frame.width} × {frame.height}px
+                      </p>
                     </div>
-                    <h4 className="font-semibold mb-2">Customize in Figma</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Edit colors, fonts, and layouts to match your brand
-                    </p>
-                  </Card>
-
-                  <Card className="p-6">
-                    <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center mb-4">
-                      <span className="text-primary font-semibold">2</span>
+                    <div className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
+                      {frame.type.toUpperCase()}
                     </div>
-                    <h4 className="font-semibold mb-2">Share with Team</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Invite team members to collaborate on the designs
-                    </p>
-                  </Card>
+                  </div>
 
-                  <Card className="p-6">
-                    <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center mb-4">
-                      <span className="text-primary font-semibold">3</span>
-                    </div>
-                    <h4 className="font-semibold mb-2">Export & Use</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Download as PNG, PDF, or use in your presentations
-                    </p>
-                  </Card>
-                </div>
-              </div>
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-8 min-h-[200px] border-2 border-dashed border-gray-300 flex items-center justify-center">
+                    {frame.type === "header" && (
+                      <div className="text-center">
+                        <h2 className="text-4xl font-black text-orange-600 mb-2">Data Dashboard</h2>
+                        <p className="text-xl text-purple-600">AI-Powered Insights</p>
+                      </div>
+                    )}
+                    {frame.type === "table" && (
+                      <div className="w-full">
+                        <div className="grid grid-cols-5 gap-2">
+                          {frame.columns.slice(0, 5).map((col: string, idx: number) => (
+                            <div key={idx} className="p-3 bg-white rounded border text-center font-semibold text-sm">
+                              {col}
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-center text-sm text-gray-500 mt-4">+ {frame.rows} data rows</p>
+                      </div>
+                    )}
+                    {frame.type === "stats" && (
+                      <div className="grid grid-cols-3 gap-6 w-full">
+                        {frame.stats.map((stat: any, idx: number) => (
+                          <div key={idx} className="text-center p-4 bg-white rounded-lg border">
+                            <p className="text-3xl font-black text-orange-600 mb-1">{stat.value}</p>
+                            <p className="text-sm text-gray-600">{stat.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/analyze" className="flex-1">
-                  <Button className="w-full">Analyze New Data</Button>
-                </Link>
-                <Button
-                  variant="outline"
-                  className="flex-1 bg-transparent"
-                  onClick={() => {
-                    setExportComplete(false);
-                    setIsConnected(false);
-                  }}
+            {/* Export Actions */}
+            <Card className="p-8 border-2 border-orange-200 bg-orange-50 mb-8">
+              <h3 className="text-xl font-bold mb-4">Export to Figma</h3>
+              <p className="text-gray-700 mb-6">
+                Your design is ready! Export it to Figma or copy the link to share with your team.
+              </p>
+              <div className="flex gap-4">
+                <Button 
+                  size="lg" 
+                  className="bg-gradient-to-r from-orange-600 to-orange-700 flex-1"
+                  onClick={handleExportToFigma}
                 >
-                  Export Again
+                  <Download className="w-5 h-5 mr-2" />
+                  {exported ? "Exported to Figma" : "Export to Figma"}
+                </Button>
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={handleCopyFigmaLink}
+                >
+                  <Copy className="w-5 h-5 mr-2" />
+                  Copy Figma Link
                 </Button>
               </div>
-            </>
-          )}
-        </div>
+            </Card>
+
+            {/* Data Summary */}
+            <Card className="p-8 mb-8 border-2 border-gray-200 bg-gray-50">
+              <h3 className="text-xl font-bold mb-4">Original Data Summary</h3>
+              <p className="text-base leading-relaxed text-gray-700">
+                {figmaData.summary}
+              </p>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 justify-center">
+              <Button size="lg" className="bg-gradient-to-r from-pink-600 to-pink-700">
+                Download as PNG
+              </Button>
+              <Button size="lg" variant="outline" onClick={clearFigmaData}>
+                Create New Export
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </main>
   );
