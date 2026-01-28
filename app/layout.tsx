@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Chatbot } from '@/components/chatbot'
-import { DataProvider } from '@/context/DataContext' // 1. Import the Provider
+import { DataProvider } from '@/context/DataContext' 
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
         url: '/icon.svg',
         type: 'image/svg+xml',
       },
-    ],
+    ], // <-- Ensure this array is closed correctly
     apple: '/apple-icon.png',
   },
 }
@@ -39,8 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`font-sans antialiased`}>
-        {/* 2. Wrap everything in the DataProvider */}
+      <body className="font-sans antialiased">
         <DataProvider>
           {children}
           <Chatbot />
