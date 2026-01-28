@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,48 +11,47 @@ export default function AnalyzePage() {
   const [dataset, setDataset] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Prevent browser default behavior for drag & drop
-  useEffect(() => {
-    const preventDefaults = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    window.addEventListener("dragover", preventDefaults);
-    window.addEventListener("drop", preventDefaults);
-
-    return () => {
-      window.removeEventListener("dragover", preventDefaults);
-      window.removeEventListener("drop", preventDefaults);
-    };
-  }, []);
-
-  // Drag handlers
-  const handleDrag = (e: React.DragEvent) => {
+  // Drag events
+  const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
-    else if (e.type === "dragleave") setDragActive(false);
+    setDragActive(true);
   };
-
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     setDragActive(false);
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileUpload(e.dataTransfer.files[0]);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("File input triggered!");
+    
     if (e.target.files && e.target.files[0]) {
+      console.log("File selected:", e.target.files[0].name);
       handleFileUpload(e.target.files[0]);
     }
   };
 
-  // Upload file to backend
+  // Trigger file input click
+  const handleButtonClick = () => {
+    console.log("Button clicked!");
+    fileInputRef.current?.click();
+  };
+
+  // Upload to backend
   const handleFileUpload = async (file: File) => {
+    console.log("Starting upload for:", file.name);
     setIsLoading(true);
     setError(null);
 
@@ -60,20 +59,21 @@ export default function AnalyzePage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(
-        "https://datanova-backend.onrender.com/analyze",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      console.log("Sending request to backend...");
+      const res = await fetch("https://datanova-backend.onrender.com/analyze", {
+        method: "POST",
+        body: formData,
+      });
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text);
+      console.log("Response status:", res.status);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Backend error:", errorText);
+        throw new Error(`Upload failed: ${res.status}`);
       }
 
-      const data = await response.json();
+      const data = await res.json();
       console.log("Backend response:", data);
 
       setDataset({
@@ -83,7 +83,7 @@ export default function AnalyzePage() {
         columns: data.columns,
       });
     } catch (err) {
-      console.error("Upload failed:", err);
+      console.error("Upload error:", err);
       setError("Upload failed. Check backend or file format.");
     } finally {
       setIsLoading(false);
@@ -95,7 +95,7 @@ export default function AnalyzePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-purple-50">
       {/* Navigation */}
-      <nav className="sticky top-0 bg-white/85 backdrop-blur-sm border-b">
+      <nav className="sticky top-0 bg-white/85 backdrop-blur-sm border-b z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center">
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <ArrowLeft className="w-5 h-5" />
@@ -119,24 +119,18 @@ export default function AnalyzePage() {
             )}
 
             <div
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
               onDrop={handleDrop}
               className={`bg-white rounded-3xl p-12 text-center border-2 transition
                 ${dragActive ? "border-primary bg-primary/10" : "border-orange-200"}
                 ${isLoading ? "opacity-60 pointer-events-none" : ""}
               `}
             >
-              <div className="flex justify-center mb-6">
-                {isLoading ? (
-                  <Loader className="w-16 h-16 animate-spin text-primary" />
-                ) : (
-                  <div className="w-20 h-20 bg-blue-500 rounded-2xl flex items-center justify-center">
-                    <Upload className="w-10 h-10 text-white" />
-                  </div>
-                )}
-              </div>
+              {isLoading ? (
+                <Loader className="w-16 h-16 animate-spin text-primary mx-auto mb-6" />
+              ) : null}
 
               <h2 className="text-3xl font-black mb-2">
                 {isLoading ? "Uploading..." : "Drag & Drop Your CSV File Here"}
@@ -145,19 +139,23 @@ export default function AnalyzePage() {
                 {isLoading ? "Processing file..." : "or click the button below to browse"}
               </p>
 
-              <label className="inline-block">
-                <Button disabled={isLoading}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Choose File
-                </Button>
-                <input
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={handleChange}
-                  disabled={isLoading}
-                />
-              </label>
+              {/* ✅ FIXED: Using ref to trigger hidden input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleChange}
+                disabled={isLoading}
+              />
+              <Button 
+                onClick={handleButtonClick}
+                disabled={isLoading} 
+                type="button"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Choose File
+              </Button>
             </div>
           </>
         ) : (
@@ -170,16 +168,18 @@ export default function AnalyzePage() {
 
             <Card className="p-8 mb-6">
               <h3 className="text-xl font-bold mb-4">Summary</h3>
-              <p>{dataset.summary}</p>
+              <p className="whitespace-pre-wrap">{dataset.summary}</p>
             </Card>
 
             <Card className="p-8 mb-8">
               <h3 className="text-xl font-bold mb-4">Columns</h3>
-              {dataset.columns.map((col: string) => (
-                <div key={col} className="p-2 bg-muted/20 rounded mb-2">
-                  {col}
-                </div>
-              ))}
+              <div className="space-y-2">
+                {dataset.columns.map((col: string) => (
+                  <div key={col} className="p-2 bg-muted/20 rounded">
+                    {col}
+                  </div>
+                ))}
+              </div>
             </Card>
 
             <Button onClick={clearDataset} variant="outline">
