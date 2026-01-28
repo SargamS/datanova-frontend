@@ -2,50 +2,29 @@
 
 import React, { useState, useRef } from "react";
 import Link from "next/link";
+import { useData } from "@/context/DataContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input"; // Ensure this file exists (see below)
 import { 
-  ArrowLeft, Upload, Loader, Palette, Download, 
-  FileJson, ImageIcon, CheckCircle, AlertCircle, ExternalLink 
+  ArrowLeft, Loader, Download, 
+  FileJson, ImageIcon, ExternalLink, Figma, BookOpen, Info, Layout 
 } from "lucide-react";
 
 export default function ExportPage() {
-  const [figmaData, setFigmaData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { sharedData } = useData();
+  const [fileKey, setFileKey] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const handleFileUpload = async (file: File) => {
-    setIsLoading(true);
-    setError(null);
-    setImageUrl(null);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch("https://datanova-backend.onrender.com/analyze", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error("Backend connection failed.");
-
-      const data = await res.json();
-      setFigmaData(data);
-    } catch (err) {
-      setError("Could not connect to the DataNova engine.");
-    } finally {
-      setIsLoading(false);
-    }
+  // FIX: Added explicit type for the event 'e'
+  const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileKey(e.target.value);
   };
 
-  // --- FEATURE 1: DOWNLOAD FIGMA JSON ---
   const downloadFigmaJSON = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(figmaData, null, 2));
+    if (!sharedData) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sharedData, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", `DataNova_Figma_Spec.json`);
@@ -54,47 +33,42 @@ export default function ExportPage() {
     downloadAnchorNode.remove();
   };
 
-  // --- FEATURE 2: GENERATE PNG REPORT ---
   const generateReportImage = () => {
-    if (!canvasRef.current || !figmaData) return;
+    if (!canvasRef.current || !sharedData) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Canvas Styling
     canvas.width = 800;
     canvas.height = 1000;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, 800, 1000);
 
-    // Header Branding
     ctx.fillStyle = "#F97316";
     ctx.font = "bold 32px sans-serif";
     ctx.fillText("DataNova AI Report", 50, 80);
 
-    // Stats Cards
     ctx.fillStyle = "#F8FAFC";
-    ctx.fillRect(50, 120, 330, 100); // Card 1
-    ctx.fillRect(420, 120, 330, 100); // Card 2
+    ctx.fillRect(50, 120, 330, 100); 
+    ctx.fillRect(420, 120, 330, 100); 
     
     ctx.fillStyle = "#1E293B";
     ctx.font = "bold 24px sans-serif";
-    ctx.fillText(String(figmaData.row_count), 70, 160);
-    ctx.fillText(String(figmaData.column_count), 440, 160);
+    ctx.fillText(String(sharedData.row_count || 0), 70, 160);
+    ctx.fillText(String(sharedData.column_count || 0), 440, 160);
     
     ctx.font = "14px sans-serif";
     ctx.fillStyle = "#64748B";
     ctx.fillText("Total Rows", 70, 190);
     ctx.fillText("Total Columns", 440, 190);
 
-    // AI Summary
     ctx.fillStyle = "#1E293B";
     ctx.font = "bold 20px sans-serif";
     ctx.fillText("AI Analysis Summary", 50, 280);
 
     ctx.font = "16px sans-serif";
     ctx.fillStyle = "#334155";
-    const words = figmaData.summary.split(' ');
+    const words = (sharedData.summary || "").split(' ');
     let line = '';
     let y = 320;
     for (let n = 0; n < words.length; n++) {
@@ -108,81 +82,111 @@ export default function ExportPage() {
       }
     }
     ctx.fillText(line, 50, y);
-
     setImageUrl(canvas.toDataURL("image/png"));
   };
 
   return (
     <main className="min-h-screen bg-slate-50 p-8">
       <canvas ref={canvasRef} className="hidden" />
-      
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <Link href="/" className="text-sm flex items-center gap-2 mb-8 text-slate-500 hover:text-orange-600 transition">
-          <ArrowLeft size={16}/> Back to Dashboard
+          <ArrowLeft size={16}/> Back to Dashboard Home
         </Link>
 
         <h1 className="text-4xl font-black text-slate-900 mb-2">Exporter & Design</h1>
-        <p className="text-slate-500 mb-10">Convert your raw data into design-ready assets.</p>
+        <p className="text-slate-500 mb-10 italic">Working with: {sharedData?.fileName || "No dataset active"}</p>
 
-        {!figmaData ? (
-          <Card className="p-16 border-dashed border-2 flex flex-col items-center justify-center text-center">
-            {isLoading ? (
-              <div className="space-y-4">
-                <Loader className="animate-spin text-orange-500 mx-auto" size={48} />
-                <p className="font-bold text-lg text-slate-700">Architecting your design frames...</p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-5 space-y-6">
+            <Card className="p-6 border-2 border-orange-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-6 text-orange-600">
+                <Figma size={24} />
+                <h2 className="text-xl font-bold">Figma Integration</h2>
               </div>
-            ) : (
-              <>
-                <div className="bg-orange-100 p-6 rounded-full mb-6 text-orange-600">
-                  <Palette size={40} />
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Figma File Key</label>
+                  <Input 
+                    placeholder="Paste File Key (from URL)" 
+                    value={fileKey}
+                    onChange={handleKeyChange}
+                    className="bg-white"
+                  />
                 </div>
-                <h2 className="text-2xl font-bold mb-2 text-slate-800">Ready to Export?</h2>
-                <p className="text-slate-500 mb-8 max-w-xs">Upload your CSV to generate Figma-ready JSON and high-res report images.</p>
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept=".csv" 
-                    onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} 
-                />
-                <Button onClick={() => fileInputRef.current?.click()} className="bg-orange-600 hover:bg-orange-700 h-12 px-8 font-bold">
-                  <Upload className="mr-2" size={18}/> Start Export
-                </Button>
-              </>
-            )}
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in zoom-in duration-300">
-            {/* Figma Card */}
-            <Card className="p-8 border-2 border-orange-100 relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-4 opacity-10"><FileJson size={80}/></div>
-               <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-orange-700"><CheckCircle size={20}/> Figma Design Spec</h3>
-               <p className="text-sm text-slate-600 mb-6">Download the JSON specification to import your data directly into Figma using the "JSON to Design" plugin.</p>
-               <Button onClick={downloadFigmaJSON} variant="outline" className="w-full border-orange-200 hover:bg-orange-50 text-orange-700 font-bold">
-                 <Download className="mr-2" size={18}/> Download JSON
-               </Button>
+                <div className="p-3 bg-blue-50 rounded-lg flex gap-3">
+                  <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-blue-700 leading-tight">
+                    Find the key in your Figma URL: figma.com/file/<b>FILE_KEY</b>/name
+                  </p>
+                </div>
+              </div>
             </Card>
 
-            {/* PNG Report Card */}
-            <Card className="p-8 border-2 border-blue-100 relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-4 opacity-10"><ImageIcon size={80}/></div>
-               <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-blue-700">PNG Report Image</h3>
-               <p className="text-sm text-slate-600 mb-6">Generate a high-resolution summary image perfect for sharing in Slack, emails, or presentations.</p>
-               {imageUrl ? (
-                 <div className="space-y-4">
-                    <img src={imageUrl} alt="Preview" className="w-full h-32 object-cover rounded border" />
-                    <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 font-bold">
-                        <a href={imageUrl} download="DataNova_Report.png"><Download size={18} className="mr-2"/> Save Image</a>
-                    </Button>
-                 </div>
-               ) : (
-                 <Button onClick={generateReportImage} className="w-full bg-blue-600 hover:bg-blue-700 font-bold">
-                    Generate Preview
-                 </Button>
-               )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Card className="p-4 border border-slate-200 hover:border-orange-200 transition">
+                <FileJson className="text-orange-500 mb-2" size={24}/>
+                <h4 className="font-bold text-sm mb-1">Design Spec</h4>
+                <Button onClick={downloadFigmaJSON} disabled={!sharedData} variant="ghost" size="sm" className="w-full text-xs p-0 h-auto text-orange-600 hover:bg-transparent">
+                   Download JSON
+                </Button>
+              </Card>
+
+              <Card className="p-4 border border-slate-200 hover:border-blue-200 transition">
+                <ImageIcon className="text-blue-500 mb-2" size={24}/>
+                <h4 className="font-bold text-sm mb-1">Report Image</h4>
+                <Button onClick={generateReportImage} disabled={!sharedData} variant="ghost" size="sm" className="w-full text-xs p-0 h-auto text-blue-600 hover:bg-transparent">
+                   {imageUrl ? "Regenerate" : "Generate PNG"}
+                </Button>
+              </Card>
+            </div>
+
+            <Card className="p-6">
+              <h3 className="font-bold flex items-center gap-2 mb-4 text-slate-800">
+                <BookOpen size={18} className="text-blue-500" /> 
+                Dataset Resources
+              </h3>
+              <div className="space-y-2">
+                {sharedData?.resources?.map((res: any, i: number) => (
+                  <a key={i} href={res.url} target="_blank" className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border hover:bg-orange-50 transition text-sm">
+                    <span className="font-medium truncate mr-2">{res.title}</span>
+                    <ExternalLink size={14} className="shrink-0 text-slate-400" />
+                  </a>
+                )) || <p className="text-xs text-slate-400 italic">Analyze a file to see related learning materials.</p>}
+              </div>
             </Card>
           </div>
-        )}
+
+          <div className="lg:col-span-7">
+            {fileKey ? (
+              <Card className="h-full min-h-[600px] overflow-hidden border-2 shadow-xl rounded-2xl bg-white">
+                <div className="bg-slate-100 p-3 border-b flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-500 flex items-center gap-2">
+                    <Layout size={14}/> LIVE PROTOTYPE EMBED
+                  </span>
+                </div>
+                <iframe 
+                  className="w-full h-[550px]"
+                  src={`https://www.figma.com/embed?embed_host=datanova&url=https://www.figma.com/file/${fileKey}`}
+                  allowFullScreen
+                />
+              </Card>
+            ) : (
+              <div className="h-full min-h-[600px] border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center bg-slate-100/30 text-slate-400">
+                <Figma size={64} className="opacity-10 mb-6" />
+                <p className="font-medium">Connect a Figma File Key to see the live prototype</p>
+                {imageUrl && (
+                   <div className="mt-8 p-4 bg-white border rounded shadow-sm max-w-sm">
+                     <p className="text-[10px] uppercase font-bold mb-2">Report Preview:</p>
+                     <img src={imageUrl} alt="Preview" className="w-full h-auto rounded border mb-2" />
+                     <a href={imageUrl} download="DataNova_Report.png" className="text-xs text-blue-600 font-bold flex items-center gap-1">
+                       <Download size={12}/> Download PNG
+                     </a>
+                   </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </main>
   );
