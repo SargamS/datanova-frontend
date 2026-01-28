@@ -3,55 +3,72 @@
 import React, { useState, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ArrowLeft, Upload, Loader } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  ArrowLeft, 
+  Upload, 
+  Loader, 
+  Database, 
+  LayoutTemplate, 
+  FileText, 
+  AlertCircle 
+} from "lucide-react";
+
+// Define the shape of the data we expect from the backend
+interface DatasetInfo {
+  fileName: string;
+  uploadedAt: Date;
+  rowCount: number;
+  columnCount: number;
+  columns: string[];
+  preview: Array<Record<string, any>>; // Array of objects for the top 10 rows
+  dtypes?: Record<string, string>;     // Optional: Column data types
+}
 
 export default function AnalyzePage() {
   const [dragActive, setDragActive] = useState(false);
-  const [dataset, setDataset] = useState<any>(null);
+  const [dataset, setDataset] = useState<DatasetInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Drag events
+  // --- Drag & Drop Handlers ---
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragActive(true);
   };
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragActive(false);
   };
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
   };
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragActive(false);
-
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileUpload(e.dataTransfer.files[0]);
     }
   };
 
+  // --- File Selection Handlers ---
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("File input triggered!");
-    
     if (e.target.files && e.target.files[0]) {
-      console.log("File selected:", e.target.files[0].name);
       handleFileUpload(e.target.files[0]);
     }
   };
 
-  // Trigger file input click
   const handleButtonClick = () => {
-    console.log("Button clicked!");
     fileInputRef.current?.click();
   };
 
-  // Upload to backend
+  // --- API Upload Logic ---
   const handleFileUpload = async (file: File) => {
-    console.log("Starting upload for:", file.name);
     setIsLoading(true);
     setError(null);
 
@@ -59,32 +76,33 @@ export default function AnalyzePage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      console.log("Sending request to backend...");
+      // NOTE: Ensure your backend returns the JSON structure defined below!
       const res = await fetch("https://datanova-backend.onrender.com/analyze", {
         method: "POST",
         body: formData,
       });
 
-      console.log("Response status:", res.status);
-
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Backend error:", errorText);
         throw new Error(`Upload failed: ${res.status}`);
       }
 
       const data = await res.json();
-      console.log("Backend response:", data);
-
+      
+      // Map backend response to our state
       setDataset({
         fileName: file.name,
         uploadedAt: new Date(),
-        summary: data.summary,
-        columns: data.columns,
+        // Fallbacks provided in case backend data is missing
+        rowCount: data.row_count || 0,
+        columnCount: data.columns ? data.columns.length : 0,
+        columns: data.columns || [],
+        preview: data.head || [], // Expecting 'head' or 'preview' array
+        dtypes: data.dtypes || {}
       });
+
     } catch (err) {
       console.error("Upload error:", err);
-      setError("Upload failed. Check backend or file format.");
+      setError("Failed to analyze file. Please ensure it is a valid CSV.");
     } finally {
       setIsLoading(false);
     }
@@ -93,28 +111,39 @@ export default function AnalyzePage() {
   const clearDataset = () => setDataset(null);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-purple-50">
+    <main className="min-h-screen bg-slate-50">
       {/* Navigation */}
-      <nav className="sticky top-0 bg-white/85 backdrop-blur-sm border-b z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
+      <nav className="sticky top-0 bg-white/80 backdrop-blur-md border-b z-50">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition font-medium">
             <ArrowLeft className="w-5 h-5" />
-            Back
+            Back to Home
           </Link>
+          <span className="font-bold text-xl tracking-tight text-slate-800">DataNova</span>
         </div>
       </nav>
 
-      <div className="pt-12 pb-12 px-6 max-w-4xl mx-auto">
-        <h1 className="text-5xl font-black mb-2">Data Analysis</h1>
-        <p className="text-muted-foreground mb-10">
-          Upload your CSV file to explore insights.
-        </p>
+      <div className="pt-10 pb-20 px-6 max-w-6xl mx-auto">
+        
+        {/* Header Section */}
+        <div className="mb-10">
+          <h1 className="text-4xl font-black text-slate-900 mb-3">
+            {dataset ? "Analysis Report" : "Upload Dataset"}
+          </h1>
+          <p className="text-slate-500 text-lg">
+            {dataset 
+              ? `Viewing insights for ${dataset.fileName}` 
+              : "Upload your CSV to generate an interactive data profile."}
+          </p>
+        </div>
 
         {!dataset ? (
-          <>
+          /* --- Upload Area --- */
+          <div className="max-w-2xl mx-auto">
             {error && (
-              <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
-                <p className="text-red-700 font-semibold">{error}</p>
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                <AlertCircle className="text-red-600 w-5 h-5" />
+                <p className="text-red-700 font-medium">{error}</p>
               </div>
             )}
 
@@ -123,69 +152,159 @@ export default function AnalyzePage() {
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              className={`bg-white rounded-3xl p-12 text-center border-2 transition
-                ${dragActive ? "border-primary bg-primary/10" : "border-orange-200"}
-                ${isLoading ? "opacity-60 pointer-events-none" : ""}
+              className={`
+                group relative flex flex-col items-center justify-center 
+                h-80 rounded-3xl border-2 border-dashed transition-all duration-300
+                ${dragActive 
+                  ? "border-blue-500 bg-blue-50/50 scale-[1.02]" 
+                  : "border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50/50"
+                }
+                ${isLoading ? "opacity-50 pointer-events-none" : ""}
               `}
             >
               {isLoading ? (
-                <Loader className="w-16 h-16 animate-spin text-primary mx-auto mb-6" />
-              ) : null}
-
-              <h2 className="text-3xl font-black mb-2">
-                {isLoading ? "Uploading..." : "Drag & Drop Your CSV File Here"}
-              </h2>
-              <p className="text-muted-foreground mb-8">
-                {isLoading ? "Processing file..." : "or click the button below to browse"}
-              </p>
-
-              {/* ✅ FIXED: Using ref to trigger hidden input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={handleChange}
-                disabled={isLoading}
-              />
-              <Button 
-                onClick={handleButtonClick}
-                disabled={isLoading} 
-                type="button"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Choose File
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <Card className="p-8 mb-6">
-              <h2 className="text-2xl font-bold mb-4">File Info</h2>
-              <p><b>Name:</b> {dataset.fileName}</p>
-              <p><b>Uploaded:</b> {dataset.uploadedAt.toLocaleDateString()}</p>
-            </Card>
-
-            <Card className="p-8 mb-6">
-              <h3 className="text-xl font-bold mb-4">Summary</h3>
-              <p className="whitespace-pre-wrap">{dataset.summary}</p>
-            </Card>
-
-            <Card className="p-8 mb-8">
-              <h3 className="text-xl font-bold mb-4">Columns</h3>
-              <div className="space-y-2">
-                {dataset.columns.map((col: string) => (
-                  <div key={col} className="p-2 bg-muted/20 rounded">
-                    {col}
+                <div className="flex flex-col items-center animate-pulse">
+                  <Loader className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+                  <p className="text-lg font-medium text-slate-600">Analyzing structure...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Upload className="w-8 h-8" />
                   </div>
-                ))}
+                  <h3 className="text-2xl font-bold text-slate-800 mb-2">Drag & Drop CSV</h3>
+                  <p className="text-slate-500 mb-8 text-center max-w-xs">
+                    or click below to browse your files
+                  </p>
+                  
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleChange}
+                  />
+                  <Button 
+                    onClick={handleButtonClick} 
+                    size="lg"
+                    className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-8"
+                  >
+                    Select File
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* --- Dashboard View --- */
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            
+            {/* 1. Key Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Rows</CardTitle>
+                  <Database className="w-4 h-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{dataset.rowCount.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Columns</CardTitle>
+                  <LayoutTemplate className="w-4 h-4 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{dataset.columnCount}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">File Name</CardTitle>
+                  <FileText className="w-4 h-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-lg font-bold truncate" title={dataset.fileName}>
+                    {dataset.fileName}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {dataset.uploadedAt.toLocaleDateString()}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 2. Data Preview Table */}
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-slate-50/50 border-b">
+                <CardTitle>Data Preview (Top 10 Rows)</CardTitle>
+              </CardHeader>
+              <div className="overflow-x-auto">
+                {dataset.preview && dataset.preview.length > 0 ? (
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-500 uppercase bg-slate-100">
+                      <tr>
+                        {dataset.columns.map((col) => (
+                          <th key={col} className="px-6 py-4 font-bold whitespace-nowrap">
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dataset.preview.map((row, rowIndex) => (
+                        <tr key={rowIndex} className="bg-white border-b hover:bg-slate-50/50">
+                          {dataset.columns.map((col) => (
+                            <td key={`${rowIndex}-${col}`} className="px-6 py-4 whitespace-nowrap text-slate-700">
+                              {row[col]?.toString() || "-"}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No preview data available from server.
+                  </div>
+                )}
               </div>
             </Card>
 
-            <Button onClick={clearDataset} variant="outline">
-              Upload Different File
-            </Button>
-          </>
+            {/* 3. Column Structure / Schema */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Column Structure</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dataset.columns.map((col) => (
+                    <div key={col} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                      <span className="font-medium text-slate-700 truncate mr-2" title={col}>
+                        {col}
+                      </span>
+                      {dataset.dtypes && dataset.dtypes[col] && (
+                        <span className="px-2 py-1 bg-slate-200 text-slate-600 text-xs rounded font-mono">
+                          {dataset.dtypes[col]}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end pt-4">
+              <Button onClick={clearDataset} variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-100">
+                Delete & Upload New File
+              </Button>
+            </div>
+
+          </div>
         )}
       </div>
     </main>
