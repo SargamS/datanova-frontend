@@ -72,9 +72,9 @@ export default function AnalyzePage() {
         uploadedAt: new Date(),
         rowCount: data.row_count,
         columnCount: data.column_count,
-        columns: data.columns || [],
+        columns: Array.isArray(data.columns) ? data.columns : [],
         summary: data.summary || "",
-        head: data.head || [],
+        head: Array.isArray(data.head) ? data.head : [],
       });
 
     } catch (err: any) {
@@ -187,15 +187,15 @@ export default function AnalyzePage() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50">
                     <tr>
-                      {(dataset.columns || []).map(col => (
+                      {Array.isArray(dataset.columns) && dataset.columns.map(col => (
                         <th key={col} className="px-4 py-2 border-b text-left">{col}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {(dataset.head || []).map((row, i) => (
+                    {Array.isArray(dataset.head) && dataset.head.map((row, i) => (
                       <tr key={i} className="border-b">
-                        {(dataset.columns || []).map(col => (
+                        {Array.isArray(dataset.columns) && dataset.columns.map(col => (
                           <td key={col} className="px-4 py-2 text-slate-600">
                             {row?.[col]?.toString() || "-"}
                           </td>

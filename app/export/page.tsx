@@ -79,6 +79,9 @@ export default function ExportPage() {
     setImageUrl(canvas.toDataURL("image/png"));
   };
 
+  // Safe array for resources
+  const resources = Array.isArray(sharedData?.resources) ? sharedData.resources : [];
+
   return (
     <main className="min-h-screen bg-slate-50 p-8">
       <canvas ref={canvasRef} className="hidden" />
@@ -131,8 +134,8 @@ export default function ExportPage() {
               <h3 className="flex items-center gap-2 font-bold mb-4">
                 <BookOpen className="text-blue-500" /> Dataset Resources
               </h3>
-              {(sharedData?.resources || []).length ? (
-                (sharedData?.resources || []).map((res: any, i: number) => (
+              {resources.length > 0 ? (
+                resources.map((res: any, i: number) => (
                   <a key={i} href={res.url} target="_blank" rel="noreferrer"
                      className="flex justify-between items-center p-3 mb-2 bg-slate-50 rounded hover:bg-orange-50">
                     <span className="text-sm">{res.title}</span>

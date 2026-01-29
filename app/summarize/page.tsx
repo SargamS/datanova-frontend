@@ -58,6 +58,19 @@ export default function SummarizePage() {
     a.click();
   };
 
+  // Safe arrays for insights and resources
+  const insights = Array.isArray(localData?.insights) 
+    ? localData.insights 
+    : Array.isArray(sharedData?.insights) 
+    ? sharedData.insights 
+    : [];
+
+  const resources = Array.isArray(localData?.resources) 
+    ? localData.resources 
+    : Array.isArray(sharedData?.resources) 
+    ? sharedData.resources 
+    : [];
+
   if (!sharedData) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -144,11 +157,15 @@ export default function SummarizePage() {
                 <h3 className="font-bold flex items-center gap-2 text-orange-800 mb-4">
                   <Lightbulb size={18} /> Key Takeaways
                 </h3>
-                <ul className="space-y-2">
-                  {(localData?.insights || sharedData?.insights || []).map((insight: string, i: number) => (
-                    <li key={i} className="text-sm text-orange-900">• {insight}</li>
-                  ))}
-                </ul>
+                {insights.length > 0 ? (
+                  <ul className="space-y-2">
+                    {insights.map((insight: string, i: number) => (
+                      <li key={i} className="text-sm text-orange-900">• {insight}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-orange-700 italic">No insights available</p>
+                )}
               </CardContent>
             </Card>
 
@@ -157,19 +174,23 @@ export default function SummarizePage() {
                 <h3 className="font-bold flex items-center gap-2 mb-4">
                   <ExternalLink size={18} className="text-blue-500"/> Recommended Reading
                 </h3>
-                <div className="space-y-2">
-                  {(localData?.resources || sharedData?.resources || []).map((res: any, i: number) => (
-                    <a
-                      key={i}
-                      href={res.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block p-3 rounded-lg border hover:border-orange-400 transition text-sm font-bold"
-                    >
-                      {res.title}
-                    </a>
-                  ))}
-                </div>
+                {resources.length > 0 ? (
+                  <div className="space-y-2">
+                    {resources.map((res: any, i: number) => (
+                      <a
+                        key={i}
+                        href={res.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block p-3 rounded-lg border hover:border-orange-400 transition text-sm font-bold"
+                      >
+                        {res.title}
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400 italic">No resources available</p>
+                )}
               </CardContent>
             </Card>
           </div>
