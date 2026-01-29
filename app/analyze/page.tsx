@@ -5,19 +5,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  ArrowLeft,
-  Upload,
-  Loader2,
-  Database,
-  LayoutTemplate,
-  FileText,
-  AlertCircle,
-  Sparkles,
-  BarChart3,
-  ChevronRight,
-  Palette
+  ArrowLeft, Upload, Loader2, Database, LayoutTemplate, FileText, AlertCircle,
+  Sparkles, BarChart3
 } from "lucide-react";
-
 import AIAssistant from "@/components/chatbot";
 
 interface DatasetInfo {
@@ -94,7 +84,6 @@ export default function AnalyzePage() {
     }
   };
 
-  // ---------------- UI ----------------
   return (
     <main className="min-h-screen bg-slate-50 pb-20">
       {/* NAV */}
@@ -185,7 +174,7 @@ export default function AnalyzePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-slate-700 italic">{dataset.summary || "-"}</p>
+                <p className="text-slate-700 italic">{dataset.summary || "No summary available."}</p>
               </CardContent>
             </Card>
 
@@ -208,7 +197,7 @@ export default function AnalyzePage() {
                       <tr key={i} className="border-b">
                         {(dataset.columns || []).map(col => (
                           <td key={col} className="px-4 py-2 text-slate-600">
-                            {row[col]?.toString() || "-"}
+                            {row?.[col]?.toString() || "-"}
                           </td>
                         ))}
                       </tr>
@@ -228,7 +217,6 @@ export default function AnalyzePage() {
   );
 }
 
-// ---------------- COMPONENTS ----------------
 function StatCard({ title, value, icon, isTruncate }: any) {
   return (
     <Card>
