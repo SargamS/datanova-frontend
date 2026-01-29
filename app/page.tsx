@@ -1,283 +1,200 @@
 'use client';
 
-import React, { useState } from 'react';
 import Link from 'next/link';
-import { useData } from "@/context/DataContext";
-import { DataNovaLogoWithText } from '@/components/DataNovaLogo';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Upload, Sparkles, BarChart3, MessageSquare, 
-  FileText, TrendingUp, Zap, ArrowRight, 
-  CheckCircle2, Loader2, AlertCircle, X 
+import {
+  BarChart3,
+  FileText,
+  Wand2,
+  Upload,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 
 export default function Home() {
-  const { setSharedData } = useData();
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    const csvFile = files.find(file => file.name.endsWith('.csv'));
-    
-    if (!csvFile) {
-      setUploadError('Please upload a CSV file');
-      return;
-    }
-    
-    await handleFileUpload(csvFile);
-  };
-
-  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-    
-    if (!selectedFile.name.endsWith('.csv')) {
-      setUploadError('Please upload a CSV file');
-      return;
-    }
-    
-    await handleFileUpload(selectedFile);
-  };
-
-  const handleFileUpload = async (uploadedFile: File) => {
-    setFile(uploadedFile);
-    setIsUploading(true);
-    setUploadError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', uploadedFile);
-
-      const res = await fetch("https://datanova-backend.onrender.com/api/summary", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.detail || "Failed to analyze file");
-      }
-
-      const result = await res.json();
-      setSharedData(result);
-
-    } catch (err: any) {
-      console.error(err);
-      setUploadError(err.message || 'Failed to process file');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const features = [
-    {
-      icon: Sparkles,
-      title: "AI-Powered Summaries",
-      description: "Get intelligent insights from your data in seconds with advanced AI analysis.",
-      color: "from-purple-500 to-pink-500",
-      link: "/summarize"
-    },
-    {
-      icon: BarChart3,
-      title: "Beautiful Visualizations",
-      description: "Create stunning charts and graphs with customizable colors and styles.",
-      color: "from-blue-500 to-cyan-500",
-      link: "/visualize"
-    },
-    {
-      icon: MessageSquare,
-      title: "Interactive Q&A",
-      description: "Ask questions about your data and get instant, accurate answers.",
-      color: "from-orange-500 to-red-500",
-      link: "/qna"
-    },
-  ];
-
-  const steps = [
-    { icon: Upload, title: "Upload", description: "CSV, Excel files" },
-    { icon: Sparkles, title: "Analyze", description: "AI-powered insights" },
-    { icon: FileText, title: "Export", description: "To Figma" },
-  ];
-
   return (
-    <main className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+    <main className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 text-foreground overflow-hidden relative">
       {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-lg border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <DataNovaLogoWithText logoSize={40} />
-          
-          <div className="flex items-center gap-8">
-            <Link href="#features" className="text-slate-600 hover:text-purple-600 font-medium transition">
+      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b border-border z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer group">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-black text-foreground">DataNova</span>
+          </div>
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#features" className="text-sm font-semibold text-foreground hover:text-primary transition">
               Features
-            </Link>
-            <Link href="#how-it-works" className="text-slate-600 hover:text-purple-600 font-medium transition">
+            </a>
+            <a href="#how-it-works" className="text-sm font-semibold text-foreground hover:text-primary transition">
               How It Works
-            </Link>
-            <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-              Get Started
-            </Button>
+            </a>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-6 pt-20 pb-12">
-        <div className="text-center mb-16">
-          <h1 className="text-6xl md:text-7xl font-black mb-6 leading-tight">
-            Transform Your Data
-            <br />
-            <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
-              Into Insights
-            </span>
-          </h1>
-          <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-8">
-            Upload CSV or Excel files, get AI-powered summaries, create beautiful visualizations, 
-            and export designs to Figma.
-          </p>
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-5xl mx-auto">
+          <div className="bg-white rounded-3xl shadow-2xl p-12 sm:p-16 overflow-hidden relative">
+            {/* Decorative colored shapes */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-400 rounded-full opacity-20 blur-3xl -z-10"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-400 rounded-full opacity-20 blur-3xl -z-10"></div>
 
-          {/* Step indicators */}
-          <div className="flex justify-center gap-8 mb-12">
-            {steps.map((step, idx) => (
-              <div key={idx} className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                  <step.icon className="w-6 h-6 text-purple-600" />
+            <div className="mb-12">
+              <h1 className="text-5xl sm:text-6xl font-black text-foreground mb-6 leading-tight animate-float-up">
+                Transform Your Data<br />Into Insights
+              </h1>
+              <p className="text-xl text-muted-foreground mb-10 max-w-2xl">
+                Upload CSV or Excel files, get AI-powered summaries, create beautiful visualizations, and export designs to Figma.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50">
+                <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <Upload className="w-6 h-6 text-white" />
                 </div>
-                <div className="text-left">
-                  <h3 className="font-bold text-slate-800">{step.title}</h3>
-                  <p className="text-sm text-slate-500">{step.description}</p>
+                <div>
+                  <p className="font-bold text-foreground">Upload</p>
+                  <p className="text-sm text-muted-foreground">CSV, Excel files</p>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Upload Section */}
-          <Card 
-            className={`max-w-3xl mx-auto border-2 transition-all ${
-              isDragging 
-                ? 'border-purple-500 border-dashed bg-purple-50' 
-                : 'border-dashed border-slate-200'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <CardContent className="p-12">
-              {isUploading ? (
-                <div className="flex flex-col items-center">
-                  <Loader2 className="animate-spin text-purple-600 mb-4" size={48} />
-                  <h3 className="text-2xl font-bold mb-2">Processing your data...</h3>
-                  <p className="text-slate-500">This may take a moment</p>
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-indigo-50">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <Wand2 className="w-6 h-6 text-white" />
                 </div>
-              ) : (
-                <>
-                  <Upload size={56} className={`mx-auto mb-6 ${isDragging ? 'text-purple-600' : 'text-slate-300'}`} />
-                  <h2 className="text-3xl font-bold mb-3">
-                    {file ? file.name : 'Drop your CSV file here'}
-                  </h2>
-                  <p className="text-slate-500 mb-8">or click to browse</p>
-                  
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileInput}
-                    className="hidden"
-                    id="csv-upload-home"
-                  />
-                  <Button 
-                    asChild 
-                    size="lg"
-                    className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 text-lg px-12 py-6"
-                  >
-                    <label htmlFor="csv-upload-home" className="cursor-pointer">
-                      <Upload className="mr-2" size={20} />
-                      Start Analyzing
-                      <ArrowRight className="ml-2" size={20} />
-                    </label>
-                  </Button>
+                <div>
+                  <p className="font-bold text-foreground">Analyze</p>
+                  <p className="text-sm text-muted-foreground">AI-powered insights</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-orange-50 to-red-50">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">Export</p>
+                  <p className="text-sm text-muted-foreground">To Figma</p>
+                </div>
+              </div>
+            </div>
 
-                  {uploadError && (
-                    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-red-700">
-                        <AlertCircle size={18} />
-                        <span className="text-sm font-medium">{uploadError}</span>
-                      </div>
-                      <button onClick={() => setUploadError(null)} className="text-red-500 hover:text-red-700">
-                        <X size={18} />
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+            <Link href="/analyze">
+              <Button size="lg" className="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold py-6 text-lg rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all">
+                Start Analyzing
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="max-w-7xl mx-auto px-6 py-20">
-        <h2 className="text-4xl font-black text-center mb-16">
-          Powerful Features for Data Analysis
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {features.map((feature, idx) => (
-            <Link href={feature.link} key={idx}>
-              <Card className="h-full hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer border-2 hover:border-purple-200">
-                <CardContent className="p-8">
-                  <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-6`}>
-                    <feature.icon className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold mb-3">{feature.title}</h3>
-                  <p className="text-slate-600 mb-4">{feature.description}</p>
-                  <div className="flex items-center text-purple-600 font-semibold">
-                    Learn more <ArrowRight className="ml-2" size={16} />
-                  </div>
-                </CardContent>
-              </Card>
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl sm:text-6xl font-black text-foreground mb-4">Powerful Features</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Everything you need to analyze, visualize, and share your data
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Feature 1 */}
+            <Link href="/analyze">
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all group cursor-pointer h-full overflow-hidden relative border-2 border-blue-200">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full opacity-40 blur-2xl -z-10"></div>
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <BarChart3 className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-3">Data Analysis</h3>
+                <p className="text-muted-foreground mb-6">
+                  Upload datasets and explore comprehensive statistics and insights in real-time.
+                </p>
+                <div className="flex items-center text-primary font-semibold text-sm">
+                  Explore <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
             </Link>
-          ))}
+
+            {/* Feature 2 */}
+            <Link href="/summarize">
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all group cursor-pointer h-full overflow-hidden relative border-2 border-purple-200">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100 rounded-full opacity-40 blur-2xl -z-10"></div>
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <FileText className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-3">AI Summaries</h3>
+                <p className="text-muted-foreground mb-6">
+                  Get intelligent summaries with advanced analysis. Perfect for reports and presentations.
+                </p>
+                <div className="flex items-center text-primary font-semibold text-sm">
+                  Generate <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Feature 3 */}
+            <Link href="/visualize">
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all group cursor-pointer h-full overflow-hidden relative border-2 border-green-200">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 rounded-full opacity-40 blur-2xl -z-10"></div>
+                <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <Wand2 className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-3">Visualizations</h3>
+                <p className="text-muted-foreground mb-6">
+                  Create beautiful, interactive charts and infographics with Plotly.
+                </p>
+                <div className="flex items-center text-primary font-semibold text-sm">
+                  Create <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Feature 4 */}
+            <Link href="/export">
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all group cursor-pointer h-full overflow-hidden relative border-2 border-orange-200">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 rounded-full opacity-40 blur-2xl -z-10"></div>
+                <div className="w-14 h-14 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <Upload className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-3">Figma Export</h3>
+                <p className="text-muted-foreground mb-6">
+                  Export designs directly to Figma for seamless team collaboration.
+                </p>
+                <div className="flex items-center text-primary font-semibold text-sm">
+                  Export <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section id="how-it-works" className="bg-white py-20">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="text-4xl font-black text-center mb-16">
+      {/* How It Works */}
+      <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-5xl sm:text-6xl font-black text-center mb-16 text-foreground">
             How It Works
           </h2>
-          
-          <div className="space-y-8">
+
+          <div className="space-y-6">
             {[
-              { step: "01", title: "Upload Your Data", description: "Drag and drop or select CSV files from your computer. We support files up to 100MB." },
-              { step: "02", title: "AI Analysis", description: "Our advanced AI processes your data, identifying patterns, trends, and key insights automatically." },
-              { step: "03", title: "Visualize & Export", description: "Create beautiful charts, get summaries, and export everything to Figma or download as images." },
-            ].map((item, idx) => (
-              <div key={idx} className="flex gap-8 items-start">
-                <div className="text-6xl font-black text-transparent bg-gradient-to-br from-purple-200 to-pink-200 bg-clip-text">
+              { step: 1, title: 'Upload Your Data', description: 'Simply upload your CSV or Excel file.' },
+              { step: 2, title: 'Get Insights', description: 'Our AI analyzes and generates summaries.' },
+              { step: 3, title: 'Create Visuals', description: 'Build interactive charts and infographics.' },
+              { step: 4, title: 'Export', description: 'Download designs and export to Figma.' },
+            ].map((item) => (
+              <div key={item.step} className="flex gap-6 items-start">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0 text-white font-bold">
                   {item.step}
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-2">{item.title}</h3>
-                  <p className="text-slate-600 text-lg">{item.description}</p>
+                <div>
+                  <h3 className="text-xl font-bold text-foreground mb-1">{item.title}</h3>
+                  <p className="text-muted-foreground">{item.description}</p>
                 </div>
-                <CheckCircle2 className="w-8 h-8 text-green-500" />
               </div>
             ))}
           </div>
@@ -285,40 +202,33 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="max-w-7xl mx-auto px-6 py-20">
-        <Card className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 border-0">
-          <CardContent className="p-16 text-center text-white">
-            <Zap className="w-16 h-16 mx-auto mb-6" />
-            <h2 className="text-4xl font-black mb-4">Ready to Transform Your Data?</h2>
-            <p className="text-xl mb-8 opacity-90">
-              Join thousands of users who trust DataNova for their data analysis needs.
-            </p>
-            <Button 
-              size="lg"
-              className="bg-white text-purple-600 hover:bg-slate-100 text-lg px-12 py-6"
-            >
-              Get Started Free
-              <ArrowRight className="ml-2" size={20} />
+      <section className="py-20 px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-4xl mx-auto bg-white rounded-3xl p-12 sm:p-16 text-center shadow-2xl overflow-hidden relative border-2 border-orange-200">
+          <div className="absolute top-0 left-0 w-40 h-40 bg-purple-200 rounded-full opacity-30 blur-3xl -z-10"></div>
+          <div className="absolute bottom-0 right-0 w-56 h-56 bg-orange-200 rounded-full opacity-30 blur-3xl -z-10"></div>
+          
+          <h2 className="text-4xl sm:text-5xl font-black text-foreground mb-6">Ready to Transform Your Data?</h2>
+          <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
+            Start analyzing, visualizing, and exporting your data in minutes. Join teams that trust DataNova.
+          </p>
+          <Link href="/analyze">
+            <Button size="lg" className="bg-gradient-to-r from-primary via-purple-600 to-secondary text-white font-bold py-6 px-10 text-lg rounded-xl hover:shadow-2xl hover:shadow-primary/40 transition-all transform hover:scale-105">
+              Upload Your First File
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
-          </CardContent>
-        </Card>
+          </Link>
+        </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <DataNovaLogoWithText logoSize={36} className="justify-center mb-4" />
-          <p className="text-slate-400 mb-6">
-            Transform your data into insights with AI-powered analysis.
-          </p>
-          <div className="flex justify-center gap-8 text-sm text-slate-400">
-            <Link href="#" className="hover:text-white transition">Privacy Policy</Link>
-            <Link href="#" className="hover:text-white transition">Terms of Service</Link>
-            <Link href="#" className="hover:text-white transition">Contact</Link>
+      <footer className="py-8 px-4 sm:px-6 lg:px-8 bg-white/50 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-muted-foreground">
+          <p className="font-semibold text-foreground">&copy; 2025 DataNova. All rights reserved.</p>
+          <div className="flex gap-8">
+            <a href="#" className="hover:text-primary transition font-semibold">Privacy</a>
+            <a href="#" className="hover:text-primary transition font-semibold">Terms</a>
+            <a href="#" className="hover:text-primary transition font-semibold">Contact</a>
           </div>
-          <p className="text-slate-500 mt-8 text-sm">
-            © 2026 DataNova. All rights reserved.
-          </p>
         </div>
       </footer>
     </main>
