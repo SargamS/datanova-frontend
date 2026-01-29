@@ -17,17 +17,17 @@ export default function Home() {
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-sm border-b border-border z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 cursor-pointer group">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+          <div className="flex items-center gap-3 cursor-pointer group">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-black text-foreground">DataNova</span>
-          </Link>
+          </div>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm font-semibold text-foreground hover:text-orange-600 transition">
+            <a href="#features" className="text-sm font-semibold text-foreground hover:text-primary transition">
               Features
             </a>
-            <a href="#how-it-works" className="text-sm font-semibold text-foreground hover:text-orange-600 transition">
+            <a href="#how-it-works" className="text-sm font-semibold text-foreground hover:text-primary transition">
               How It Works
             </a>
           </div>
@@ -35,56 +35,142 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-16 relative overflow-hidden">
-            <div className="relative z-10">
-              <h1 className="text-5xl sm:text-7xl font-black text-slate-900 mb-6 leading-tight">
+          <div className="bg-white rounded-3xl shadow-2xl p-12 sm:p-16 overflow-hidden relative">
+            {/* Decorative colored shapes */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-400 rounded-full opacity-20 blur-3xl -z-10"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-400 rounded-full opacity-20 blur-3xl -z-10"></div>
+
+            <div className="mb-12">
+              <h1 className="text-5xl sm:text-6xl font-black text-foreground mb-6 leading-tight animate-float-up">
                 Transform Your Data<br />Into Insights
               </h1>
-              <p className="text-xl text-slate-500 mb-10 max-w-2xl">
-                Upload CSV files, get AI-powered summaries, and export designs to Figma instantly.
+              <p className="text-xl text-muted-foreground mb-10 max-w-2xl">
+                Upload CSV or Excel files, get AI-powered summaries, create beautiful visualizations, and export designs to Figma.
               </p>
-              <Link href="/analyze">
-                <Button size="lg" className="bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 py-6 text-lg rounded-xl transition-all shadow-lg shadow-orange-200">
-                  Start Analyzing <ArrowRight className="ml-2" />
-                </Button>
-              </Link>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50">
+                <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <Upload className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">Upload</p>
+                  <p className="text-sm text-muted-foreground">CSV, Excel files</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-indigo-50">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <Wand2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">Analyze</p>
+                  <p className="text-sm text-muted-foreground">AI-powered insights</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-br from-orange-50 to-red-50">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">Export</p>
+                  <p className="text-sm text-muted-foreground">To Figma</p>
+                </div>
+              </div>
+            </div>
+
+            <Link href="/analyze">
+              <Button size="lg" className="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold py-6 text-lg rounded-xl hover:shadow-xl hover:shadow-primary/30 transition-all">
+                Start Analyzing
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Feature Grid */}
-      <section id="features" className="py-20 max-w-6xl mx-auto px-4 grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <FeatureCard 
-          href="/analyze" 
-          title="Analyze" 
-          desc="Real-time stats" 
-          icon={<BarChart3 className="text-blue-500" />} 
-          color="border-blue-200"
-        />
-        <FeatureCard 
-          href="/summarize" 
-          title="AI Summary" 
-          desc="GPT-4 Insights" 
-          icon={<FileText className="text-purple-500" />} 
-          color="border-purple-200"
-        />
-        <FeatureCard 
-          href="/visualize" 
-          title="Visualize" 
-          desc="Interactive charts" 
-          icon={<Wand2 className="text-green-500" />} 
-          color="border-green-200"
-        />
-        <FeatureCard 
-          href="/export" 
-          title="Export" 
-          desc="Figma & PNG" 
-          icon={<Upload className="text-orange-500" />} 
-          color="border-orange-200"
-        />
+      {/* Features Section */}
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-5xl sm:text-6xl font-black text-foreground mb-4">Powerful Features</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Everything you need to analyze, visualize, and share your data
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Feature 1 */}
+            <Link href="/analyze">
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all group cursor-pointer h-full overflow-hidden relative border-2 border-blue-200">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full opacity-40 blur-2xl -z-10"></div>
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <BarChart3 className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-3">Data Analysis</h3>
+                <p className="text-muted-foreground mb-6">
+                  Upload datasets and explore comprehensive statistics and insights in real-time.
+                </p>
+                <div className="flex items-center text-primary font-semibold text-sm">
+                  Explore <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Feature 2 */}
+            <Link href="/summarize">
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all group cursor-pointer h-full overflow-hidden relative border-2 border-purple-200">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100 rounded-full opacity-40 blur-2xl -z-10"></div>
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <FileText className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-3">AI Summaries</h3>
+                <p className="text-muted-foreground mb-6">
+                  Get intelligent summaries with advanced analysis. Perfect for reports and presentations.
+                </p>
+                <div className="flex items-center text-primary font-semibold text-sm">
+                  Generate <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Feature 3 */}
+            <Link href="/visualize">
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all group cursor-pointer h-full overflow-hidden relative border-2 border-green-200">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 rounded-full opacity-40 blur-2xl -z-10"></div>
+                <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <Wand2 className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-3">Visualizations</h3>
+                <p className="text-muted-foreground mb-6">
+                  Create beautiful, interactive charts and infographics with Plotly.
+                </p>
+                <div className="flex items-center text-primary font-semibold text-sm">
+                  Create <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Feature 4 */}
+            <Link href="/export">
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all group cursor-pointer h-full overflow-hidden relative border-2 border-orange-200">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 rounded-full opacity-40 blur-2xl -z-10"></div>
+                <div className="w-14 h-14 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                  <Upload className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-3">Figma Export</h3>
+                <p className="text-muted-foreground mb-6">
+                  Export designs directly to Figma for seamless team collaboration.
+                </p>
+                <div className="flex items-center text-primary font-semibold text-sm">
+                  Export <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
       </section>
 
       {/* How It Works */}
@@ -102,7 +188,7 @@ export default function Home() {
               { step: 4, title: 'Export', description: 'Download designs and export to Figma.' },
             ].map((item) => (
               <div key={item.step} className="flex gap-6 items-start">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center flex-shrink-0 text-white font-bold">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0 text-white font-bold">
                   {item.step}
                 </div>
                 <div>
@@ -126,7 +212,7 @@ export default function Home() {
             Start analyzing, visualizing, and exporting your data in minutes. Join teams that trust DataNova.
           </p>
           <Link href="/analyze">
-            <Button size="lg" className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-500 text-white font-bold py-6 px-10 text-lg rounded-xl hover:shadow-2xl hover:shadow-orange-400/40 transition-all transform hover:scale-105">
+            <Button size="lg" className="bg-gradient-to-r from-primary via-purple-600 to-secondary text-white font-bold py-6 px-10 text-lg rounded-xl hover:shadow-2xl hover:shadow-primary/40 transition-all transform hover:scale-105">
               Upload Your First File
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
@@ -139,30 +225,12 @@ export default function Home() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-muted-foreground">
           <p className="font-semibold text-foreground">&copy; 2025 DataNova. All rights reserved.</p>
           <div className="flex gap-8">
-            <a href="#" className="hover:text-orange-600 transition font-semibold">Privacy</a>
-            <a href="#" className="hover:text-orange-600 transition font-semibold">Terms</a>
-            <a href="#" className="hover:text-orange-600 transition font-semibold">Contact</a>
+            <a href="#" className="hover:text-primary transition font-semibold">Privacy</a>
+            <a href="#" className="hover:text-primary transition font-semibold">Terms</a>
+            <a href="#" className="hover:text-primary transition font-semibold">Contact</a>
           </div>
         </div>
       </footer>
     </main>
-  );
-}
-
-function FeatureCard({ href, title, desc, icon, color }: {
-  href: string;
-  title: string;
-  desc: string;
-  icon: React.ReactNode;
-  color: string;
-}) {
-  return (
-    <Link href={href}>
-      <div className={`bg-white p-6 rounded-2xl border-2 ${color} hover:shadow-xl transition-all cursor-pointer group`}>
-        <div className="mb-4 group-hover:scale-110 transition-transform">{icon}</div>
-        <h3 className="font-bold text-lg">{title}</h3>
-        <p className="text-slate-500 text-sm">{desc}</p>
-      </div>
-    </Link>
   );
 }
