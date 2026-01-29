@@ -54,16 +54,26 @@ export default function Chatbot({ csvData }: { csvData?: any }) {
         if (query.includes('figma')) response = SITE_INFO.figma
         else if (query.includes('visual')) response = SITE_INFO.visualizer
         else response = SITE_INFO.features
-      } else if (csvData) {
+      } else if (csvData && typeof csvData === 'object') {
+        // FIXED: Safe access to csvData properties
+        const fileName = csvData.fileName || 'your dataset'
+        const columns = Array.isArray(csvData.columns) ? csvData.columns : []
+        const summary = csvData.summary || ''
+
         if (query.includes('column')) {
-          response = `Your dataset "${csvData.fileName}" has these columns: ${csvData.columns?.join(', ')}.`
+          if (columns.length > 0) {
+            response = `Your dataset "${fileName}" has these columns: ${columns.join(', ')}.`
+          } else {
+            response = `Your dataset "${fileName}" doesn't have column information available yet.`
+          }
         } else if (query.includes('summary') || query.includes('insight')) {
-          response = `Analysis for ${csvData.fileName}: ${csvData.summary?.substring(
-            0,
-            150
-          )}...`
+          if (summary) {
+            response = `Analysis for ${fileName}: ${summary.substring(0, 150)}...`
+          } else {
+            response = `Your dataset "${fileName}" is loaded, but summary is still being generated.`
+          }
         } else {
-          response = `I can help analyze ${csvData.fileName}. Ask about columns or summaries.`
+          response = `I can help analyze ${fileName}. Ask about columns or summaries.`
         }
       } else {
         response =
@@ -92,7 +102,7 @@ export default function Chatbot({ csvData }: { csvData?: any }) {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 text-sm">
-            {messages.map((m, i) => (
+            {Array.isArray(messages) && messages.map((m, i) => (
               <div
                 key={i}
                 className={`flex ${
