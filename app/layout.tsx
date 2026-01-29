@@ -13,9 +13,14 @@ export const metadata: Metadata = {
   title: 'DataNova - AI-Powered Data Analysis',
   description: 'Transform your data into insights with AI summaries, interactive visualizations, and export-ready designs',
   generator: 'v0.app',
-  icons: {
-    icon: '/datanova-icon.svg',
+  icons: {       
+    icon: [
+      { url: '/datanova-icon.svg', type: 'image/svg+xml' },
+      { url: '/datanova-icon.svg', sizes: '32x32', type: 'image/svg+xml' },
+      { url: '/datanova-icon.svg', sizes: '16x16', type: 'image/svg+xml' },
+    ],
     apple: '/datanova-icon.svg',
+    shortcut: '/datanova-icon.svg',
   },
 }
 
