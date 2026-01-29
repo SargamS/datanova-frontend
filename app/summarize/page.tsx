@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { 
   ArrowLeft, FileText, Sparkles, Loader2, Lightbulb, 
   ExternalLink, History, Upload, X, FileCheck, 
-  AlertCircle, Settings2 
+  AlertCircle, Settings2, Download 
 } from 'lucide-react';
 
 export default function SummarizePage() {
@@ -79,14 +79,14 @@ export default function SummarizePage() {
       formData.append('tone', summaryTone);
       formData.append('audience', audienceType);
 
-      const res = await fetch("https://datanova-backend.onrender.com/analyze", {
+      const res = await fetch("https://datanova-backend.onrender.com/api/summary", {
         method: "POST",
         body: formData,
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to analyze file");
+        throw new Error(errorData.detail || "Failed to analyze file");
       }
 
       const result = await res.json();
@@ -102,30 +102,35 @@ export default function SummarizePage() {
   };
 
   const handleRegenerateSummary = async () => {
-    if (!sharedData) return;
+    if (!localData) return;
 
     setIsGenerating(true);
+    setUploadError(null);
 
     try {
-      const res = await fetch("https://datanova-backend.onrender.com/analyze", {
+      const res = await fetch("https://datanova-backend.onrender.com/api/summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          existingData: sharedData,
+          existingData: localData,
           length: summaryLength,
           tone: summaryTone,
           audience: audienceType,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to regenerate summary.");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Failed to regenerate summary");
+      }
 
       const result = await res.json();
       setLocalData(result);
+      setSharedData(result); // Update context
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setUploadError('Failed to regenerate summary');
+      setUploadError(err.message || 'Failed to regenerate summary');
     } finally {
       setIsGenerating(false);
     }
@@ -136,12 +141,20 @@ export default function SummarizePage() {
     
     let content = '';
     let mimeType = 'text/plain';
+    let extension = format;
     
     if (format === 'json') {
       content = JSON.stringify(localData, null, 2);
       mimeType = 'application/json';
     } else if (format === 'md') {
-      content = `# ${localData.fileName || 'Data Summary'}\n\n## Summary\n\n${localData.summary || ''}\n\n## Key Insights\n\n${insights.map((i: string) => `- ${i}`).join('\n')}`;
+      content = `# ${localData.fileName || 'Data Summary'}\n\n`;
+      content += `**Generated**: ${new Date().toLocaleString()}\n\n`;
+      content += `## Summary\n\n${localData.summary || ''}\n\n`;
+      content += `## Key Insights\n\n${insights.map((i: string) => `- ${i}`).join('\n')}\n\n`;
+      content += `## Dataset Information\n\n`;
+      content += `- **Rows**: ${localData.row_count || 0}\n`;
+      content += `- **Columns**: ${localData.column_count || 0}\n`;
+      content += `- **Mode**: ${localData.mode || 'N/A'}\n`;
       mimeType = 'text/markdown';
     } else {
       content = localData.summary || "";
@@ -151,7 +164,7 @@ export default function SummarizePage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `DataNova_Summary_${Date.now()}.${format}`;
+    a.download = `DataNova_Summary_${Date.now()}.${extension}`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -170,7 +183,7 @@ export default function SummarizePage() {
     : [];
 
   // No active dataset view with drag-drop
-  if (!sharedData) {
+  if (!sharedData && !localData) {
     return (
       <main className="min-h-screen bg-slate-50">
         <nav className="h-16 border-b bg-white flex items-center px-6">
@@ -302,6 +315,8 @@ export default function SummarizePage() {
     );
   }
 
+  const displayData = localData || sharedData;
+
   // Active dataset view with summary
   return (
     <main className="min-h-screen bg-slate-50 pb-20">
@@ -319,99 +334,55 @@ export default function SummarizePage() {
             </h1>
             <div className="flex items-center gap-2 mt-2">
               <FileCheck className="text-green-600" size={16} />
-              <p className="text-slate-600">Currently analyzing: <span className="font-bold">{sharedData.fileName || "N/A"}</span></p>
+              <p className="text-slate-600">Currently analyzing: <span className="font-bold">{displayData.fileName || "N/A"}</span></p>
             </div>
           </div>
 
           {/* Upload new file button */}
-          <div>
+          <div className="flex gap-2">
             <input
               type="file"
               accept=".csv"
               onChange={handleFileInput}
               className="hidden"
               id="csv-upload-active"
+              disabled={isUploading}
             />
-            <Button asChild variant="outline" className="border-orange-200 hover:border-orange-400">
+            <Button 
+              asChild 
+              variant="outline" 
+              className="border-orange-200 hover:border-orange-400"
+              disabled={isUploading}
+            >
               <label htmlFor="csv-upload-active" className="cursor-pointer flex items-center gap-2">
-                <Upload size={16} />
-                Upload New CSV
+                {isUploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
+                {isUploading ? 'Uploading...' : 'Upload New CSV'}
               </label>
             </Button>
           </div>
         </div>
 
+        {/* Error Display */}
+        {uploadError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2 text-red-700">
+              <AlertCircle size={18} />
+              <span className="text-sm font-medium">{uploadError}</span>
+            </div>
+            <button onClick={() => setUploadError(null)} className="text-red-500 hover:text-red-700">
+              <X size={18} />
+            </button>
+          </div>
+        )}
+
         {/* Customization Controls */}
         <Card className="mb-8 bg-white">
           <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings2 size={18} className="text-orange-500" />
-              <h3 className="font-bold">Customize Summary</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Length */}
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Length</label>
-                <div className="flex bg-slate-100 rounded-lg p-1">
-                  {['concise', 'medium', 'lengthy'].map(length => (
-                    <button
-                      key={length}
-                      onClick={() => setSummaryLength(length)}
-                      className={`flex-1 px-3 py-2 text-xs font-bold rounded-md transition ${
-                        summaryLength === length 
-                          ? 'bg-white text-orange-600 shadow' 
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      {length.charAt(0).toUpperCase() + length.slice(1)}
-                    </button>
-                  ))}
-                </div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Settings2 size={18} className="text-orange-500" />
+                <h3 className="font-bold">Customize Summary</h3>
               </div>
-
-              {/* Tone */}
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Tone</label>
-                <div className="flex bg-slate-100 rounded-lg p-1">
-                  {['professional', 'technical', 'casual'].map(tone => (
-                    <button
-                      key={tone}
-                      onClick={() => setSummaryTone(tone)}
-                      className={`flex-1 px-3 py-2 text-xs font-bold rounded-md transition ${
-                        summaryTone === tone 
-                          ? 'bg-white text-orange-600 shadow' 
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      {tone.charAt(0).toUpperCase() + tone.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Audience */}
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Audience</label>
-                <div className="grid grid-cols-2 gap-1 bg-slate-100 rounded-lg p-1">
-                  {['general', 'executive', 'technical', 'academic'].map(audience => (
-                    <button
-                      key={audience}
-                      onClick={() => setAudienceType(audience)}
-                      className={`px-2 py-2 text-xs font-bold rounded-md transition ${
-                        audienceType === audience 
-                          ? 'bg-white text-orange-600 shadow' 
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      {audience.charAt(0).toUpperCase() + audience.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end">
               <Button 
                 onClick={handleRegenerateSummary}
                 disabled={isGenerating}
@@ -430,122 +401,238 @@ export default function SummarizePage() {
                 )}
               </Button>
             </div>
-
-            {uploadError && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
-                <AlertCircle size={16} />
-                <span className="text-sm">{uploadError}</span>
-                <button onClick={() => setUploadError(null)} className="ml-auto">
-                  <X size={16} />
-                </button>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Length */}
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Length</label>
+                <div className="flex bg-slate-100 rounded-lg p-1">
+                  {['concise', 'medium', 'lengthy'].map(length => (
+                    <button
+                      key={length}
+                      onClick={() => setSummaryLength(length)}
+                      disabled={isGenerating}
+                      className={`flex-1 px-3 py-2 text-xs font-bold rounded-md transition ${
+                        summaryLength === length 
+                          ? 'bg-white text-orange-600 shadow' 
+                          : 'text-slate-500 hover:text-slate-700'
+                      } ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {length.charAt(0).toUpperCase() + length.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
+
+              {/* Tone */}
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Tone</label>
+                <div className="flex bg-slate-100 rounded-lg p-1">
+                  {['professional', 'technical', 'casual'].map(tone => (
+                    <button
+                      key={tone}
+                      onClick={() => setSummaryTone(tone)}
+                      disabled={isGenerating}
+                      className={`flex-1 px-3 py-2 text-xs font-bold rounded-md transition ${
+                        summaryTone === tone 
+                          ? 'bg-white text-orange-600 shadow' 
+                          : 'text-slate-500 hover:text-slate-700'
+                      } ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {tone.charAt(0).toUpperCase() + tone.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Audience */}
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Audience</label>
+                <div className="grid grid-cols-2 gap-1 bg-slate-100 rounded-lg p-1">
+                  {['general', 'executive', 'technical', 'academic'].map(audience => (
+                    <button
+                      key={audience}
+                      onClick={() => setAudienceType(audience)}
+                      disabled={isGenerating}
+                      className={`px-2 py-2 text-xs font-bold rounded-md transition ${
+                        audienceType === audience 
+                          ? 'bg-white text-orange-600 shadow' 
+                          : 'text-slate-500 hover:text-slate-700'
+                      } ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {audience.charAt(0).toUpperCase() + audience.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Main Summary */}
-          <div className="lg:col-span-8">
-            <Card className="shadow-xl rounded-3xl overflow-hidden">
-              <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
-                <div className="flex items-center gap-2">
-                  <FileText size={18} className="text-orange-400" />
-                  <span className="text-xs font-bold">
-                    {summaryTone.charAt(0).toUpperCase() + summaryTone.slice(1)} Summary 
-                    <span className="text-slate-400 ml-2">• {summaryLength}</span>
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => exportSummary('txt')} className="hover:bg-slate-800">
-                    TXT
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => exportSummary('md')} className="hover:bg-slate-800">
-                    MD
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => exportSummary('json')} className="hover:bg-slate-800">
-                    JSON
-                  </Button>
-                </div>
-              </div>
-
-              <CardContent className="p-8 relative">
-                {isGenerating && (
-                  <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
-                    <Loader2 className="animate-spin text-orange-500 mb-3" size={40} />
-                    <p className="text-sm font-bold text-slate-600">Re-shaping insights...</p>
-                    <p className="text-xs text-slate-500 mt-1">This may take a moment</p>
+        {/* Summary Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            {/* AI Summary */}
+            <Card className="bg-white">
+              <CardContent className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <FileText className="text-orange-500" size={20} />
+                    <h2 className="text-xl font-bold">Summary</h2>
+                    {displayData.mode === 'ai' && (
+                      <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded">
+                        AI Generated
+                      </span>
+                    )}
+                    {displayData.mode === 'fallback' && (
+                      <span className="px-2 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded">
+                        Statistical
+                      </span>
+                    )}
                   </div>
-                )}
-                <div className="whitespace-pre-wrap text-slate-700 text-base leading-relaxed">
-                  {localData?.summary || sharedData.summary || "No summary available."}
+                  
+                  {/* Export Options */}
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => exportSummary('txt')}
+                      className="text-xs"
+                    >
+                      <Download size={14} className="mr-1" /> TXT
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => exportSummary('md')}
+                      className="text-xs"
+                    >
+                      <Download size={14} className="mr-1" /> MD
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => exportSummary('json')}
+                      className="text-xs"
+                    >
+                      <Download size={14} className="mr-1" /> JSON
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="prose prose-slate max-w-none">
+                  {isGenerating ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="animate-spin text-orange-500 mr-3" size={24} />
+                      <span className="text-slate-600">Generating new summary...</span>
+                    </div>
+                  ) : (
+                    <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                      {displayData.summary || "No summary available"}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dataset Stats */}
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <h3 className="font-bold mb-4 flex items-center gap-2">
+                  <FileText size={18} className="text-orange-500" />
+                  Dataset Statistics
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-slate-50 p-4 rounded-lg">
+                    <p className="text-xs text-slate-500 uppercase font-bold mb-1">Rows</p>
+                    <p className="text-2xl font-black">{displayData.row_count?.toLocaleString() || 0}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-lg">
+                    <p className="text-xs text-slate-500 uppercase font-bold mb-1">Columns</p>
+                    <p className="text-2xl font-black">{displayData.column_count || 0}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-lg">
+                    <p className="text-xs text-slate-500 uppercase font-bold mb-1">Missing</p>
+                    <p className="text-2xl font-black">{displayData.stats?.['Missing Values'] || 0}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-4 space-y-6">
-            <Card className="bg-orange-50 rounded-2xl">
+          <div className="space-y-6">
+            {/* Key Insights */}
+            <Card className="bg-white">
               <CardContent className="p-6">
-                <h3 className="font-bold flex items-center gap-2 text-orange-800 mb-4">
-                  <Lightbulb size={18} /> Key Takeaways
+                <h3 className="font-bold mb-4 flex items-center gap-2">
+                  <Lightbulb className="text-orange-500" size={18} />
+                  Key Insights
                 </h3>
                 {insights.length > 0 ? (
                   <ul className="space-y-3">
-                    {insights.map((insight: string, i: number) => (
-                      <li key={i} className="text-sm text-orange-900 flex gap-2">
+                    {insights.map((insight: string, idx: number) => (
+                      <li key={idx} className="text-sm text-slate-700 flex gap-2">
                         <span className="text-orange-500 font-bold">•</span>
                         <span>{insight}</span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-orange-700 italic">No insights available</p>
+                  <p className="text-sm text-slate-500">No insights available</p>
                 )}
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl">
+            {/* Recommended Resources */}
+            <Card className="bg-white">
               <CardContent className="p-6">
-                <h3 className="font-bold flex items-center gap-2 mb-4">
-                  <ExternalLink size={18} className="text-blue-500"/> Recommended Reading
+                <h3 className="font-bold mb-4 flex items-center gap-2">
+                  <ExternalLink className="text-orange-500" size={18} />
+                  Resources
                 </h3>
                 {resources.length > 0 ? (
-                  <div className="space-y-2">
-                    {resources.map((res: any, i: number) => (
-                      <a
-                        key={i}
-                        href={res.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block p-3 rounded-lg border border-slate-200 hover:border-orange-400 hover:bg-orange-50 transition text-sm font-medium text-slate-700 hover:text-orange-900"
-                      >
-                        {res.title}
-                      </a>
+                  <ul className="space-y-3">
+                    {resources.map((resource: any, idx: number) => (
+                      <li key={idx}>
+                        <a 
+                          href={resource.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-orange-600 hover:text-orange-700 hover:underline flex items-center gap-1"
+                        >
+                          {resource.title}
+                          <ExternalLink size={12} />
+                        </a>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 ) : (
-                  <p className="text-sm text-slate-400 italic">No resources available</p>
+                  <p className="text-sm text-slate-500">No resources available</p>
                 )}
               </CardContent>
             </Card>
 
-            {/* Data Stats Card */}
-            {localData?.stats && (
-              <Card className="rounded-2xl border-2 border-slate-200">
-                <CardContent className="p-6">
-                  <h3 className="font-bold mb-4 text-sm text-slate-600">Dataset Stats</h3>
-                  <div className="space-y-2">
-                    {Object.entries(localData.stats).map(([key, value]: [string, any]) => (
-                      <div key={key} className="flex justify-between text-sm">
-                        <span className="text-slate-500">{key}:</span>
-                        <span className="font-bold">{value}</span>
-                      </div>
-                    ))}
+            {/* Preferences */}
+            <Card className="bg-slate-50 border-slate-200">
+              <CardContent className="p-6">
+                <h3 className="font-bold mb-3 text-sm text-slate-600">Current Preferences</h3>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Length:</span>
+                    <span className="font-bold text-slate-700">{summaryLength}</span>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Tone:</span>
+                    <span className="font-bold text-slate-700">{summaryTone}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Audience:</span>
+                    <span className="font-bold text-slate-700">{audienceType}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
