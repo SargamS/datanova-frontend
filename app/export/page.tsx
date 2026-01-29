@@ -86,10 +86,11 @@ export default function ExportPage() {
     const words = (sharedData.summary || "").split(" ");
     let line = "";
     let y = 280;
+    const maxWidth = 800;
 
     for (let i = 0; i < words.length; i++) {
       const testLine = line + words[i] + " ";
-      if (ctx.measureText(testLine).width > 780) {
+      if (ctx.measureText(testLine).width > maxWidth) {
         ctx.fillText(line, 50, y);
         line = words[i] + " ";
         y += 26;
@@ -99,7 +100,14 @@ export default function ExportPage() {
     }
     ctx.fillText(line, 50, y);
 
-    setImageUrl(canvas.toDataURL("image/png"));
+    const pngData = canvas.toDataURL("image/png");
+    setImageUrl(pngData);
+
+    // Optional: automatically trigger download
+    const link = document.createElement("a");
+    link.href = pngData;
+    link.download = "DataNova_Report.png";
+    link.click();
   };
 
   return (
@@ -188,6 +196,7 @@ export default function ExportPage() {
                     key={i}
                     href={res.url}
                     target="_blank"
+                    rel="noreferrer"
                     className="flex justify-between items-center p-3 mb-2 bg-slate-50 rounded hover:bg-orange-50"
                   >
                     <span className="text-sm">{res.title}</span>
