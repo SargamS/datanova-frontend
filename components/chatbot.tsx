@@ -11,28 +11,34 @@ interface Message {
   timestamp: Date;
 }
 
+interface DatasetInfo {
+  fileName?: string;
+  uploadedAt?: Date;
+  rowCount?: number;
+  columnCount?: number;
+  columns?: string[];
+  summary?: string;
+  head?: Array<Record<string, any>>;
+}
+
+interface AIAssistantProps {
+  csvData?: DatasetInfo | null;
+}
+
 const SUGGESTED_QUESTIONS = [
-  "How do I upload my data?",
-  "What file formats are supported?",
-  "How does the AI summary work?",
-  "Can I export to Figma?",
+  "What does this dataset contain?",
+  "Show me column names",
+  "What's the summary?",
+  "How many rows and columns?",
 ];
 
-const BOT_RESPONSES: Record<string, string> = {
-  "upload": "To upload your data, go to the Data Analysis page and drag & drop your CSV or Excel file. The file will be analyzed instantly!",
-  "format": "We support CSV, Excel (.xlsx), and .xls files. Each file can contain up to 50MB of data.",
-  "summary": "Our AI summary uses GPT-4 to analyze your data and generate comprehensive insights including statistics, trends, and actionable recommendations.",
-  "figma": "Yes! After creating your visualizations and summaries, you can export everything directly to your Figma workspace with a single click.",
-  "help": "I'm here to help! I can answer questions about features, file uploads, AI analysis, and exporting. What would you like to know?",
-};
-
-export function Chatbot() {
+export default function AIAssistant({ csvData }: AIAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'bot',
-      text: 'Hello! 👋 I\'m the DataNova Assistant. How can I help you today?',
+      text: 'Hello! 👋 I\'m your DataNova AI Assistant. Upload a dataset and ask me questions about it!',
       timestamp: new Date(),
     },
   ]);
@@ -50,18 +56,50 @@ export function Chatbot() {
 
   const getResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
-    
-    if (lowerMessage.includes('upload') || lowerMessage.includes('file')) {
-      return BOT_RESPONSES.upload;
-    } else if (lowerMessage.includes('format') || lowerMessage.includes('support')) {
-      return BOT_RESPONSES.format;
-    } else if (lowerMessage.includes('summary') || lowerMessage.includes('ai')) {
-      return BOT_RESPONSES.summary;
-    } else if (lowerMessage.includes('figma') || lowerMessage.includes('export')) {
-      return BOT_RESPONSES.figma;
-    } else {
-      return BOT_RESPONSES.help;
+
+    // If no data uploaded
+    if (!csvData) {
+      return "Please upload a CSV file first to analyze your data. You can do this by clicking the upload area above.";
     }
+
+    // Answer questions about the dataset
+    if (lowerMessage.includes('column') || lowerMessage.includes('field')) {
+      if (csvData.columns && csvData.columns.length > 0) {
+        return `Your dataset has ${csvData.columns.length} columns: ${csvData.columns.join(', ')}`;
+      }
+      return "No column information available.";
+    }
+
+    if (lowerMessage.includes('row') || lowerMessage.includes('record') || lowerMessage.includes('how many')) {
+      return `Your dataset "${csvData.fileName || 'Uploaded file'}" contains ${csvData.rowCount || 0} rows and ${csvData.columnCount || 0} columns.`;
+    }
+
+    if (lowerMessage.includes('summary') || lowerMessage.includes('about')) {
+      if (csvData.summary) {
+        return csvData.summary;
+      }
+      return "No summary available for this dataset yet.";
+    }
+
+    if (lowerMessage.includes('contain') || lowerMessage.includes('dataset')) {
+      let response = `📊 **Dataset Overview:**\n`;
+      response += `• File: ${csvData.fileName || 'N/A'}\n`;
+      response += `• Rows: ${csvData.rowCount || 0}\n`;
+      response += `• Columns: ${csvData.columnCount || 0}\n`;
+      
+      if (csvData.columns && csvData.columns.length > 0) {
+        response += `• Fields: ${csvData.columns.slice(0, 5).join(', ')}${csvData.columns.length > 5 ? '...' : ''}`;
+      }
+      
+      return response;
+    }
+
+    if (lowerMessage.includes('help')) {
+      return "I can help you understand your dataset! Try asking:\n• What columns does this have?\n• How many rows?\n• What's the summary?\n• What does this dataset contain?";
+    }
+
+    // Default response
+    return `I'm here to help you analyze "${csvData.fileName || 'your data'}". You can ask me about the columns, row count, summary, or general information about the dataset.`;
   };
 
   const handleSendMessage = async () => {
@@ -101,22 +139,21 @@ export function Chatbot() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-8 right-8 w-20 h-20 bg-gradient-to-br from-primary via-blue-500 to-primary/80 text-white rounded-full shadow-2xl shadow-primary/60 hover:shadow-2xl hover:shadow-primary/80 hover:scale-125 transition-all z-40 flex items-center justify-center group animate-bounce-soft"
-          aria-label="Open chat"
+          className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full shadow-2xl hover:shadow-orange-500/50 hover:scale-110 transition-all z-50 flex items-center justify-center group"
+          aria-label="Open AI Assistant"
         >
-          <MessageCircle className="w-8 h-8 group-hover:rotate-12 transition-transform" />
-          <span className="absolute inset-0 rounded-full bg-primary/20 animate-pulse"></span>
+          <MessageCircle className="w-7 h-7 group-hover:rotate-12 transition-transform" />
         </button>
       )}
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-8 right-8 w-96 h-[600px] bg-card border border-border/50 rounded-3xl shadow-2xl shadow-primary/40 flex flex-col z-40 overflow-hidden animate-scale-in backdrop-blur-xl">
+        <div className="fixed bottom-8 right-8 w-96 h-[600px] bg-white border border-slate-200 rounded-3xl shadow-2xl flex flex-col z-50 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary via-blue-500 to-primary/80 text-primary-foreground p-6 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-5 flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-lg">DataNova Assistant</h3>
-              <p className="text-xs opacity-90">AI-powered support 24/7</p>
+              <h3 className="font-bold text-lg">AI Assistant</h3>
+              <p className="text-xs opacity-90">Ask me about your data</p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -127,9 +164,9 @@ export function Chatbot() {
             </button>
           </div>
 
-          {/* Messages Area - FIXED WITH NULL CHECK */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {Array.isArray(messages) && messages.map((message) => (
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+            {messages && messages.length > 0 && messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${
@@ -137,13 +174,13 @@ export function Chatbot() {
                 }`}
               >
                 <div
-                  className={`max-w-xs px-4 py-3 rounded-lg ${
+                  className={`max-w-[80%] px-4 py-3 rounded-2xl ${
                     message.type === 'user'
-                      ? 'bg-gradient-to-br from-primary to-primary/80 text-white rounded-br-none shadow-md shadow-primary/20'
-                      : 'bg-muted text-foreground rounded-bl-none'
+                      ? 'bg-orange-500 text-white rounded-br-sm'
+                      : 'bg-white text-slate-800 rounded-bl-sm shadow-sm border border-slate-200'
                   }`}
                 >
-                  <p className="text-sm">{message.text}</p>
+                  <p className="text-sm whitespace-pre-line">{message.text}</p>
                   <span className="text-xs opacity-70 mt-1 block">
                     {message.timestamp.toLocaleTimeString([], {
                       hour: '2-digit',
@@ -156,9 +193,9 @@ export function Chatbot() {
 
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-muted text-foreground px-4 py-2 rounded-lg rounded-bl-none flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Typing...</span>
+                <div className="bg-white text-slate-800 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm border border-slate-200 flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
+                  <span className="text-sm">Thinking...</span>
                 </div>
               </div>
             )}
@@ -166,18 +203,18 @@ export function Chatbot() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggested Questions - FIXED WITH NULL CHECK */}
-          {messages.length === 1 && !isLoading && (
-            <div className="px-4 py-3 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">
-                Quick questions:
+          {/* Suggested Questions */}
+          {messages.length === 1 && !isLoading && csvData && (
+            <div className="px-4 py-3 border-t border-slate-200 bg-white">
+              <p className="text-xs text-slate-500 mb-2 font-medium">
+                Try asking:
               </p>
               <div className="space-y-2">
-                {Array.isArray(SUGGESTED_QUESTIONS) && SUGGESTED_QUESTIONS.map((question) => (
+                {SUGGESTED_QUESTIONS.map((question) => (
                   <button
                     key={question}
                     onClick={() => handleSuggestedQuestion(question)}
-                    className="w-full text-left text-xs p-2 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition font-medium"
+                    className="w-full text-left text-xs p-2.5 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 hover:border-orange-300 transition text-slate-700 font-medium"
                   >
                     {question}
                   </button>
@@ -187,7 +224,7 @@ export function Chatbot() {
           )}
 
           {/* Input Area */}
-          <div className="border-t border-border p-4 bg-card/50">
+          <div className="border-t border-slate-200 p-4 bg-white">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -198,16 +235,16 @@ export function Chatbot() {
                     handleSendMessage();
                   }
                 }}
-                placeholder="Ask me anything..."
-                className="flex-1 px-3 py-2 rounded-lg border border-border bg-muted text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                placeholder="Ask about your data..."
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:border-orange-400 focus:bg-white transition"
               />
               <button
                 onClick={handleSendMessage}
                 disabled={isLoading || !inputValue.trim()}
-                className="p-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-lg hover:shadow-lg hover:shadow-primary/40 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2.5 bg-orange-500 text-white rounded-xl hover:bg-orange-600 hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Send message"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-5 h-5" />
               </button>
             </div>
           </div>
