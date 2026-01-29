@@ -47,6 +47,8 @@ export default function VisualizePage() {
         })
       });
 
+      if (!res.ok) throw new Error("Failed to generate chart");
+
       const result = await res.json();
       setChartImage(result.image_url); // backend should return base64 or URL
 
@@ -90,7 +92,9 @@ export default function VisualizePage() {
           {/* Main Section */}
           <div className="lg:col-span-8 space-y-8">
             <header>
-              <h1 className="text-5xl font-black uppercase italic">Visualizer</h1>
+              <h1 className="text-5xl font-black uppercase italic flex items-center gap-2">
+                <Sparkles className="text-orange-500" /> Visualizer
+              </h1>
               <p className="text-slate-500 mt-2">Dataset: {sharedData.fileName}</p>
             </header>
 
@@ -124,10 +128,10 @@ export default function VisualizePage() {
                     <Button
                       onClick={handleGenerate}
                       disabled={isLoading}
-                      className="bg-orange-600 text-lg px-8 py-4 rounded-full"
+                      className="bg-orange-600 text-lg px-8 py-4 rounded-full flex items-center justify-center"
                     >
                       {isLoading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />}
-                      Generate Visualization
+                      {isLoading ? "Generating..." : "Generate Visualization"}
                     </Button>
                   )}
                 </div>
@@ -143,10 +147,9 @@ export default function VisualizePage() {
 
           {/* Sidebar */}
           <div className="lg:col-span-4 sticky top-24 space-y-6">
-            <div className="flex items-center gap-2 text-purple-600">
-              <Sparkles size={20} />
-              <h2 className="font-bold text-xl uppercase">Design Inspiration</h2>
-            </div>
+            <h2 className="font-bold text-xl flex items-center gap-2 text-purple-600">
+              <Sparkles size={20} /> Design Inspiration
+            </h2>
 
             <div className="columns-2 gap-4 space-y-4">
               {[...Array(8)].map((_, i) => (

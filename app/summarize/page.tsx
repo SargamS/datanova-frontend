@@ -51,11 +51,12 @@ export default function SummarizePage() {
   };
 
   const exportSummary = (format: 'txt' | 'json') => {
-    if (!localData) return;
+    if (!localData && !sharedData) return;
+
     const content =
       format === 'json'
-        ? JSON.stringify(localData, null, 2)
-        : localData.summary;
+        ? JSON.stringify(localData || sharedData, null, 2)
+        : (localData?.summary || sharedData?.summary || '');
 
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -98,7 +99,7 @@ export default function SummarizePage() {
               <Sparkles className="text-orange-500" /> AI Summarizer
             </h1>
             <p className="text-slate-500 mt-2">
-              Currently analyzing: {sharedData.fileName}
+              Currently analyzing: {sharedData.fileName || '-'}
             </p>
           </div>
 
@@ -152,7 +153,7 @@ export default function SummarizePage() {
                 )}
 
                 <div className="whitespace-pre-wrap text-slate-700 text-lg leading-relaxed">
-                  {localData?.summary || sharedData.summary}
+                  {localData?.summary || sharedData?.summary || '-'}
                 </div>
               </CardContent>
             </Card>
@@ -166,7 +167,7 @@ export default function SummarizePage() {
                   <Lightbulb size={18}/> Key Takeaways
                 </h3>
                 <ul className="space-y-2">
-                  {(localData?.insights || sharedData.insights || []).map((insight: string, i: number) => (
+                  {(localData?.insights || sharedData?.insights || []).map((insight: string, i: number) => (
                     <li key={i} className="text-sm text-orange-900">• {insight}</li>
                   ))}
                 </ul>
@@ -179,15 +180,15 @@ export default function SummarizePage() {
                   <ExternalLink size={18} className="text-blue-500"/> Recommended Reading
                 </h3>
                 <div className="space-y-2">
-                  {(localData?.resources || sharedData.resources || []).map((res: any, i: number) => (
+                  {(localData?.resources || sharedData?.resources || []).map((res: any, i: number) => (
                     <a
                       key={i}
-                      href={res.url}
+                      href={res?.url || '#'}
                       target="_blank"
                       rel="noreferrer"
                       className="block p-3 rounded-lg border hover:border-orange-400 transition text-sm font-bold"
                     >
-                      {res.title}
+                      {res?.title || 'Untitled'}
                     </a>
                   ))}
                 </div>
