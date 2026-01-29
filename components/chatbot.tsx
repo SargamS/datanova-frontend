@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { X, Send, MessageCircle, Loader2 } from 'lucide-react';
 
 interface Message {
@@ -57,12 +56,10 @@ export default function AIAssistant({ csvData }: AIAssistantProps) {
   const getResponse = (userMessage: string): string => {
     const lowerMessage = userMessage.toLowerCase();
 
-    // If no data uploaded
     if (!csvData) {
       return "Please upload a CSV file first to analyze your data. You can do this by clicking the upload area above.";
     }
 
-    // Answer questions about the dataset
     if (lowerMessage.includes('column') || lowerMessage.includes('field')) {
       if (csvData.columns && csvData.columns.length > 0) {
         return `Your dataset has ${csvData.columns.length} columns: ${csvData.columns.join(', ')}`;
@@ -82,7 +79,7 @@ export default function AIAssistant({ csvData }: AIAssistantProps) {
     }
 
     if (lowerMessage.includes('contain') || lowerMessage.includes('dataset')) {
-      let response = `📊 **Dataset Overview:**\n`;
+      let response = `📊 Dataset Overview:\n`;
       response += `• File: ${csvData.fileName || 'N/A'}\n`;
       response += `• Rows: ${csvData.rowCount || 0}\n`;
       response += `• Columns: ${csvData.columnCount || 0}\n`;
@@ -98,7 +95,6 @@ export default function AIAssistant({ csvData }: AIAssistantProps) {
       return "I can help you understand your dataset! Try asking:\n• What columns does this have?\n• How many rows?\n• What's the summary?\n• What does this dataset contain?";
     }
 
-    // Default response
     return `I'm here to help you analyze "${csvData.fileName || 'your data'}". You can ask me about the columns, row count, summary, or general information about the dataset.`;
   };
 
@@ -116,7 +112,6 @@ export default function AIAssistant({ csvData }: AIAssistantProps) {
     setInputValue('');
     setIsLoading(true);
 
-    // Simulate bot response delay
     setTimeout(() => {
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -135,7 +130,6 @@ export default function AIAssistant({ csvData }: AIAssistantProps) {
 
   return (
     <>
-      {/* Floating Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -146,10 +140,8 @@ export default function AIAssistant({ csvData }: AIAssistantProps) {
         </button>
       )}
 
-      {/* Chat Window */}
       {isOpen && (
         <div className="fixed bottom-8 right-8 w-96 h-[600px] bg-white border border-slate-200 rounded-3xl shadow-2xl flex flex-col z-50 overflow-hidden">
-          {/* Header */}
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-5 flex items-center justify-between">
             <div>
               <h3 className="font-bold text-lg">AI Assistant</h3>
@@ -164,9 +156,8 @@ export default function AIAssistant({ csvData }: AIAssistantProps) {
             </button>
           </div>
 
-          {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-            {messages && messages.length > 0 && messages.map((message) => (
+            {Array.isArray(messages) && messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${
@@ -203,14 +194,13 @@ export default function AIAssistant({ csvData }: AIAssistantProps) {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggested Questions */}
           {messages.length === 1 && !isLoading && csvData && (
             <div className="px-4 py-3 border-t border-slate-200 bg-white">
               <p className="text-xs text-slate-500 mb-2 font-medium">
                 Try asking:
               </p>
               <div className="space-y-2">
-                {SUGGESTED_QUESTIONS.map((question) => (
+                {Array.isArray(SUGGESTED_QUESTIONS) && SUGGESTED_QUESTIONS.map((question) => (
                   <button
                     key={question}
                     onClick={() => handleSuggestedQuestion(question)}
@@ -223,7 +213,6 @@ export default function AIAssistant({ csvData }: AIAssistantProps) {
             </div>
           )}
 
-          {/* Input Area */}
           <div className="border-t border-slate-200 p-4 bg-white">
             <div className="flex gap-2">
               <input
