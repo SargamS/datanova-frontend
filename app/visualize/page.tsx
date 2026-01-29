@@ -19,42 +19,66 @@ import {
 
 export default function VisualizePage() {
   const { sharedData } = useData();
+
   const [selectedChart, setSelectedChart] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [chartImage, setChartImage] = useState<string | null>(null);
 
-  // Get current topic from filename or default to Data Visualization
-  const currentTopic = sharedData?.fileName?.split('.')[0] || "Data Visualization";
-
-  // Dynamic Inspiration Gallery based on your actual data topic
-  const inspirationPins = Array.from({ length: 10 }).map((_, i) => ({
-    id: i,
-    img: `https://picsum.photos/seed/${currentTopic + i}/400/${i % 3 === 0 ? '600' : '450'}`,
-    url: `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(currentTopic + " dashboard design")}`
-  }));
-
   const chartTypes = [
-    { id: 'bar', name: 'Bar Chart', icon: BarChart3, description: 'Perfect for comparing categories' },
-    { id: 'line', name: 'Line Chart', icon: LineChart, description: 'Ideal for showing trends' },
-    { id: 'pie', name: 'Pie Chart', icon: PieChart, description: 'Great for proportions' },
-    { id: 'scatter', name: 'Scatter Plot', icon: TrendingUp, description: 'Analyze correlations' },
+    { id: 'bar', name: 'Bar Chart', icon: BarChart3, description: 'Compare categories' },
+    { id: 'line', name: 'Line Chart', icon: LineChart, description: 'Show trends over time' },
+    { id: 'pie', name: 'Pie Chart', icon: PieChart, description: 'Proportions & ratios' },
+    { id: 'scatter', name: 'Scatter Plot', icon: TrendingUp, description: 'Correlations' },
   ];
 
   const handleGenerate = async () => {
+    if (!sharedData || !selectedChart) return;
+
     setIsLoading(true);
-    // This simulates the call to your Render backend /visualize endpoint
-    setTimeout(() => {
+    setChartImage(null);
+
+    try {
+      const res = await fetch("https://datanova-backend.onrender.com/visualize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: sharedData,
+          chartType: selectedChart
+        })
+      });
+
+      const result = await res.json();
+      setChartImage(result.image_url); // backend should return base64 or URL
+
+    } catch (error) {
+      console.error("Visualization error:", error);
+      alert("Failed to generate visualization.");
+    } finally {
       setIsLoading(false);
-      setChartImage("https://images.unsplash.com/photo-1551288049-bbbda546697a?auto=format&fit=crop&w=800&q=80");
-    }, 1500);
+    }
   };
+
+  if (!sharedData) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Card className="p-12 text-center">
+          <BarChart3 size={48} className="mx-auto text-slate-300 mb-4" />
+          <h2 className="text-xl font-bold">No Dataset Loaded</h2>
+          <p className="text-slate-500 mb-6">Upload a CSV file on the Dashboard first.</p>
+          <Button asChild className="bg-orange-600">
+            <Link href="/">Go to Dashboard</Link>
+          </Button>
+        </Card>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50">
-      {/* Navigation */}
-      <nav className="sticky top-0 bg-white/80 backdrop-blur-md border-b z-50">
+      {/* Nav */}
+      <nav className="sticky top-0 bg-white border-b z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center">
-          <Link href="/" className="flex items-center gap-2 text-slate-600 hover:text-orange-600 transition font-medium">
+          <Link href="/" className="flex items-center gap-2 text-slate-600 hover:text-orange-600">
             <ArrowLeft size={18} /> Back to Dashboard
           </Link>
         </div>
@@ -62,83 +86,76 @@ export default function VisualizePage() {
 
       <div className="max-w-7xl mx-auto p-6 lg:p-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          
-          {/* Main Visualizer Area */}
+
+          {/* Main Section */}
           <div className="lg:col-span-8 space-y-8">
             <header>
-              <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase italic">Visualizer</h1>
-              <p className="text-slate-500 mt-2">
-                {sharedData ? `Dataset: ${sharedData.fileName}` : "Select a chart type to begin"}
-              </p>
+              <h1 className="text-5xl font-black uppercase italic">Visualizer</h1>
+              <p className="text-slate-500 mt-2">Dataset: {sharedData.fileName}</p>
             </header>
 
             {!selectedChart ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {chartTypes.map((chart) => (
-                  <Card 
-                    key={chart.id} 
+                  <Card
+                    key={chart.id}
                     onClick={() => setSelectedChart(chart.id)}
-                    className="p-8 cursor-pointer hover:border-orange-500 hover:shadow-2xl transition-all group relative overflow-hidden bg-white border-2 border-slate-100"
+                    className="p-8 cursor-pointer hover:border-orange-500 hover:shadow-xl transition border-2"
                   >
-                    <chart.icon className="w-12 h-12 text-orange-500 mb-4 group-hover:scale-110 transition-transform" />
-                    <h3 className="text-2xl font-bold mb-2">{chart.name}</h3>
+                    <chart.icon className="w-12 h-12 text-orange-500 mb-4" />
+                    <h3 className="text-2xl font-bold">{chart.name}</h3>
                     <p className="text-slate-500">{chart.description}</p>
                   </Card>
                 ))}
               </div>
             ) : (
-              <Card className="p-8 border-2 border-orange-100 shadow-xl bg-white rounded-3xl overflow-hidden">
-                <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-bold uppercase tracking-tight">{selectedChart} Result</h2>
-                  <Button variant="outline" onClick={() => setSelectedChart(null)} className="rounded-full">Change Chart</Button>
+              <Card className="p-8 border-2 border-orange-100 shadow-xl rounded-3xl">
+                <div className="flex justify-between mb-6">
+                  <h2 className="text-2xl font-bold uppercase">{selectedChart} Chart</h2>
+                  <Button variant="outline" onClick={() => setSelectedChart(null)}>
+                    Change Chart
+                  </Button>
                 </div>
 
-                <div className="aspect-video bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-slate-200 relative overflow-hidden">
+                <div className="aspect-video bg-slate-100 rounded-xl flex items-center justify-center border-dashed border-2">
                   {chartImage ? (
-                    <img src={chartImage} alt="Chart" className="w-full h-full object-cover" />
+                    <img src={chartImage} alt="chart" className="w-full h-full object-contain" />
                   ) : (
-                    <div className="text-center">
-                      <BarChart3 size={64} className="mx-auto text-slate-200 mb-6" />
-                      <Button onClick={handleGenerate} disabled={isLoading} className="bg-orange-600 hover:bg-orange-700 h-12 px-8 text-lg font-bold rounded-full shadow-lg shadow-orange-200">
-                        {isLoading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />}
-                        Render Analysis
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={handleGenerate}
+                      disabled={isLoading}
+                      className="bg-orange-600 text-lg px-8 py-4 rounded-full"
+                    >
+                      {isLoading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />}
+                      Generate Visualization
+                    </Button>
                   )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 mt-8">
-                  <Button variant="secondary" className="gap-2 rounded-xl"><Download size={16}/> Save PNG</Button>
-                  <Button variant="secondary" className="gap-2 rounded-xl"><Figma size={16}/> Copy to Figma</Button>
-                  <Button className="bg-slate-900 text-white rounded-xl">Full Report</Button>
+                  <Button variant="secondary"><Download size={16}/> Save PNG</Button>
+                  <Button variant="secondary"><Figma size={16}/> Send to Figma</Button>
+                  <Button className="bg-slate-900 text-white">Full Report</Button>
                 </div>
               </Card>
             )}
           </div>
 
-          {/* Pinterest-Style Sidebar */}
-          <div className="lg:col-span-4">
-            <div className="sticky top-24 space-y-6">
-              <div className="flex items-center gap-2 text-purple-600 mb-4">
-                <Sparkles size={20} />
-                <h2 className="font-bold text-xl uppercase tracking-tighter">Design Inspiration</h2>
-              </div>
-              
-              <div className="columns-2 gap-4 space-y-4">
-                {inspirationPins.map((pin) => (
-                  <a 
-                    key={pin.id} 
-                    href={pin.url} 
-                    target="_blank" 
-                    className="block group relative rounded-2xl overflow-hidden border border-slate-200 shadow-sm transition-all hover:shadow-xl"
-                  >
-                    <img src={pin.img} alt="pin" className="w-full h-auto transition-transform duration-700 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="text-[10px] text-white font-bold bg-orange-600 px-3 py-1 rounded-full uppercase">View Design</span>
-                    </div>
-                  </a>
-                ))}
-              </div>
+          {/* Sidebar */}
+          <div className="lg:col-span-4 sticky top-24 space-y-6">
+            <div className="flex items-center gap-2 text-purple-600">
+              <Sparkles size={20} />
+              <h2 className="font-bold text-xl uppercase">Design Inspiration</h2>
+            </div>
+
+            <div className="columns-2 gap-4 space-y-4">
+              {[...Array(8)].map((_, i) => (
+                <img
+                  key={i}
+                  src={`https://picsum.photos/seed/chart${i}/400/500`}
+                  className="rounded-xl border shadow-sm hover:shadow-xl transition"
+                />
+              ))}
             </div>
           </div>
 
