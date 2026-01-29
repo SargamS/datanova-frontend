@@ -14,12 +14,7 @@ export const metadata: Metadata = {
   description: 'Transform your data into insights with AI summaries, interactive visualizations, and export-ready designs',
   generator: 'v0.app',
   icons: {
-    icon: [
-      {
-        url: '/datanova-icon.svg',
-        type: 'image/svg+xml',
-      },
-    ], 
+    icon: '/datanova-icon.svg',
     apple: '/datanova-icon.svg',
   },
 }
