@@ -71,18 +71,30 @@ export default function AnalyzePage() {
       }
 
       const data = await res.json();
+      
+      // Debug: Log the response to see what we're getting
+      console.log("Backend response:", data);
+
+      // Extract columns and head data
+      const columns = Array.isArray(data.columns) ? data.columns : [];
+      const head = Array.isArray(data.head) ? data.head.slice(0, 10) : [];
+      
+      // Calculate row and column count from the actual data if not provided
+      const rowCount = data.row_count ?? head.length;
+      const columnCount = data.column_count ?? columns.length;
 
       setDataset({
         fileName: data.fileName || file.name,
         uploadedAt: new Date(),
-        rowCount: data.row_count || 0,
-        columnCount: data.column_count || 0,
-        columns: Array.isArray(data.columns) ? data.columns : [],
+        rowCount: rowCount,
+        columnCount: columnCount,
+        columns: columns,
         summary: data.summary || "No summary available",
-        head: Array.isArray(data.head) ? data.head.slice(0, 10) : [],
+        head: head,
       });
 
     } catch (err: any) {
+      console.error("Upload error:", err);
       setError(err.message || "Upload failed");
     } finally {
       setIsLoading(false);
@@ -152,12 +164,12 @@ export default function AnalyzePage() {
         {dataset && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <StatCard title="Rows" value={dataset.rowCount} icon={<Database />} />
-              <StatCard title="Columns" value={dataset.columnCount} icon={<LayoutTemplate />} />
-              <StatCard title="File" value={dataset.fileName} icon={<FileText />} isTruncate />
+              <StatCard title="Rows" value={dataset.rowCount} icon={<Database className="w-5 h-5" />} />
+              <StatCard title="Columns" value={dataset.columnCount} icon={<LayoutTemplate className="w-5 h-5" />} />
+              <StatCard title="File" value={dataset.fileName} icon={<FileText className="w-5 h-5" />} isTruncate />
 
               <Link href="/visualize">
-                <Card className="bg-slate-900 text-white hover:bg-orange-600 transition cursor-pointer">
+                <Card className="bg-slate-900 text-white hover:bg-orange-600 transition cursor-pointer h-full">
                   <CardContent className="pt-6">
                     <BarChart3 className="w-5 h-5 mb-2" />
                     <div className="font-bold">Visualize</div>
@@ -170,7 +182,7 @@ export default function AnalyzePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="text-orange-500 w-4 h-4" />
+                  <Sparkles className="text-orange-500 w-5 h-5" />
                   AI Summary
                 </CardTitle>
               </CardHeader>
@@ -183,37 +195,40 @@ export default function AnalyzePage() {
               <CardHeader>
                 <CardTitle>Data Preview (Top 10)</CardTitle>
               </CardHeader>
-              <div className="overflow-x-auto">
-                {dataset.columns && dataset.columns.length > 0 && dataset.head && dataset.head.length > 0 ? (
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        {dataset.columns.map((col, idx) => (
-                          <th key={`${col}-${idx}`} className="px-4 py-2 border-b text-left">
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dataset.head.map((row, i) => (
-                        <tr key={i} className="border-b">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  {dataset.columns && dataset.columns.length > 0 && dataset.head && dataset.head.length > 0 ? (
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
                           {dataset.columns.map((col, idx) => (
-                            <td key={`${col}-${idx}`} className="px-4 py-2 text-slate-600">
-                              {row?.[col]?.toString() || "-"}
-                            </td>
+                            <th key={`header-${col}-${idx}`} className="px-4 py-3 border-b text-left font-semibold text-slate-700">
+                              {col}
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="p-8 text-center text-slate-400">
-                    <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No data preview available</p>
-                  </div>
-                )}
-              </div>
+                      </thead>
+                      <tbody>
+                        {dataset.head.map((row, rowIdx) => (
+                          <tr key={`row-${rowIdx}`} className="border-b hover:bg-slate-50">
+                            {dataset.columns.map((col, colIdx) => (
+                              <td key={`cell-${rowIdx}-${colIdx}`} className="px-4 py-3 text-slate-600">
+                                {row[col] !== null && row[col] !== undefined ? String(row[col]) : "-"}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-8 text-center text-slate-400">
+                      <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No data preview available</p>
+                      <p className="text-xs mt-1">Columns: {dataset.columns.length}, Rows: {dataset.head.length}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
             </Card>
 
             <div className="flex justify-center">
@@ -238,12 +253,14 @@ export default function AnalyzePage() {
 function StatCard({ title, value, icon, isTruncate }: any) {
   return (
     <Card>
-      <CardHeader className="flex justify-between items-center pb-2">
-        <CardTitle className="text-xs text-slate-400 uppercase">{title}</CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className={`text-xl font-bold ${isTruncate ? "truncate" : ""}`}>{value}</div>
+      <CardContent className="pt-6">
+        <div className="flex justify-between items-start mb-2">
+          <div className="text-xs text-slate-500 uppercase font-medium">{title}</div>
+          <div className="text-slate-400">{icon}</div>
+        </div>
+        <div className={`text-2xl font-bold text-slate-900 ${isTruncate ? "truncate" : ""}`}>
+          {value}
+        </div>
       </CardContent>
     </Card>
   );
