@@ -33,6 +33,10 @@ export default function VisualizePage() {
         body: JSON.stringify({ data: sharedData, chartType: selectedChart })
       });
 
+      if (!res.ok) {
+        throw new Error("Visualization request failed");
+      }
+
       const result = await res.json();
       setChartImage(result?.image_url || null);
 
@@ -128,6 +132,7 @@ export default function VisualizePage() {
                 <img
                   key={i}
                   src={`https://picsum.photos/seed/chart${i}/400/500`}
+                  alt={`Design inspiration ${i + 1}`}
                   className="rounded-xl border shadow-sm hover:shadow-xl transition"
                 />
               ))}
@@ -139,4 +144,3 @@ export default function VisualizePage() {
     </main>
   );
 }
-
