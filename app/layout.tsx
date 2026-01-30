@@ -13,14 +13,10 @@ export const metadata: Metadata = {
   title: 'DataNova - AI-Powered Data Analysis',
   description: 'Transform your data into insights with AI summaries, interactive visualizations, and export-ready designs',
   generator: 'v0.app',
-  icons: {       
-    icon: [
-      { url: '/datanova-icon.svg', type: 'image/svg+xml' },
-      { url: '/datanova-icon.svg', sizes: '32x32', type: 'image/svg+xml' },
-      { url: '/datanova-icon.svg', sizes: '16x16', type: 'image/svg+xml' },
-    ],
-    apple: '/datanova-icon.svg',
-    shortcut: '/datanova-icon.svg',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
   },
 }
 
@@ -31,6 +27,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" type="image/svg+xml" href="/datanova-icon.svg" />
+        <link rel="alternate icon" href="/favicon.ico" />
+      </head>
       <body className="font-sans antialiased">
         <DataProvider>
           {children}
